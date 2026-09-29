@@ -2,6 +2,7 @@ add_executable(project_phoenix
     main.cpp
     log/app_log.cpp
     script/lua_runner.cpp
+    model/model_loader.cpp
 )
 
 target_include_directories(project_phoenix PRIVATE

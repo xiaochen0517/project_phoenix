@@ -1,41 +1,291 @@
+#include <algorithm>
+#include <cmath>
+#include <cstdio>
 #include <string>
+#include <vector>
 
 #include "imgui.h"
 #include "raylib.h"
 #include "rlImGui.h"
 
 #include "log/app_log.h"
+#include "model/model_loader.h"
 #include "script/lua_runner.h"
 
-int main() {
-    constexpr int screenWidth = 800;
-    constexpr int screenHeight = 600;
+namespace {
 
+// 2K (QHD) 默认窗口
+constexpr int kScreenWidth = 2560;
+constexpr int kScreenHeight = 1440;
+
+constexpr const char *kDefaultModelPath = "assets/models/cartoon_man.glb";
+
+constexpr Color kBackgroundColor{32, 36, 40, 255};
+
+// 模型路径可能是相对路径, 而 IDE 常把工作目录设为 build 子目录;
+// 依次尝试原始路径、逐级 "../" 前缀、可执行文件所在目录。
+std::string resolveAssetPath(const std::string &requested) {
+    if (FileExists(requested.c_str())) {
+        return requested;
+    }
+
+    std::string prefix;
+    for (int i = 0; i < 4; ++i) {
+        prefix += "../";
+        const std::string candidate = prefix + requested;
+        if (FileExists(candidate.c_str())) {
+            return candidate;
+        }
+    }
+
+    const std::string candidate = GetApplicationDirectory() + requested;
+    if (FileExists(candidate.c_str())) {
+        return candidate;
+    }
+
+    return requested;  // 未找到, 交给加载器统一报错
+}
+
+void resetCamera(Camera3D &camera, const Vector3 &position, const Vector3 &target, const Vector3 &up,
+                 float fovy, int projection) {
+    camera.position = position;
+    camera.target = target;
+    camera.up = up;
+    camera.fovy = fovy;
+    camera.projection = projection;
+}
+
+// 根据模型包围盒调整相机位置, 使模型完整入镜
+void fitCameraToModel(Camera3D &camera, const model_loader::ModelScene &scene) {
+    float center[3];
+    float size[3];
+    if (!scene.bounds(center, size)) {
+        return;
+    }
+
+    const float maxSize = std::max({size[0], size[1], size[2]});
+    if (maxSize <= 0.0f) {
+        return;
+    }
+
+    const float distance = (maxSize / std::tan(camera.fovy * 0.5f * DEG2RAD)) * 1.4f;
+    resetCamera(camera, {center[0] + distance * 0.6f, center[1] + distance * 0.5f, center[2] + distance},
+                {center[0], center[1], center[2]}, {0.0f, 1.0f, 0.0f}, camera.fovy, camera.projection);
+}
+
+// ImGui 默认字体 ProggyClean 为位图字体, 仅含 ASCII/Latin 字形, 中文会渲染为 '?'。
+// 这里在字体图集首次构建前加载系统 CJK 字体并设为默认字体 (含 Latin + CJK 字形),
+// 并统一放大到 16px 以适配 2K 窗口。
+void setupImGui() {
+    rlImGuiBeginInitImGui();  // 创建 ImGui 上下文 + 添加默认字体
+    ImGui::StyleColorsDark();
+
+    constexpr float kFontSize = 16.0f;
+
+    ImGuiIO &io = ImGui::GetIO();
+    ImFontConfig fontConfig;
+    fontConfig.PixelSnapH = true;
+
+    const ImWchar *glyphRanges = io.Fonts->GetGlyphRangesChineseFull();
+
+    const char *fontPath = nullptr;
+    if (FileExists("C:/Windows/Fonts/msyh.ttc")) {
+        fontPath = "C:/Windows/Fonts/msyh.ttc";
+    } else if (FileExists("C:/Windows/Fonts/simhei.ttf")) {
+        fontPath = "C:/Windows/Fonts/simhei.ttf";
+    }
+
+    ImFont *font = nullptr;
+    if (fontPath != nullptr) {
+        font = io.Fonts->AddFontFromFileTTF(fontPath, kFontSize, &fontConfig, glyphRanges);
+    }
+
+    if (font != nullptr) {
+        io.FontDefault = font;
+        app_log::info(std::string("ImGui CJK font loaded: ") + fontPath);
+    } else {
+        app_log::warn("未找到可用中文字体 (msyh.ttc / simhei.ttf), 中文可能显示为 '?'");
+    }
+
+    rlImGuiEndInitImGui();  // 合并 FontAwesome 图标、初始化后端
+}
+
+}  // namespace
+
+int main() {
     app_log::init();
 
     const std::string message = lua_runner::eval_string(
         "return string.format('Hello from %s, 6 * 7 = %d', _VERSION, 6 * 7)");
     app_log::info("Lua result: " + message);
 
-    InitWindow(screenWidth, screenHeight, "raylib basic window");
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
+    InitWindow(kScreenWidth, kScreenHeight, "Project Phoenix - 模型查看器 (2K)");
     SetTargetFPS(60);
 
-    rlImGuiSetup(true);
+    setupImGui();
     bool showDemo = false;
 
+    // 相机与模型变换 (默认值)
+    Camera3D camera{};
+    resetCamera(camera, {8.0f, 6.0f, 10.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, 45.0f, CAMERA_PERSPECTIVE);
+    bool orbitalControl = false;
+
+    model_loader::Transform transform{};
+    bool drawWires = false;
+    bool showBounds = false;
+
+    model_loader::ModelScene scene;
+    char modelPath[512] = {0};
+    std::snprintf(modelPath, sizeof(modelPath), "%s", kDefaultModelPath);
+
+    // 启动时加载默认模型, 验证 raylib 模型加载链路 (必须在 InitWindow 之后, 纹理上传需要 GL 上下文)
+    {
+        const std::string resolved = resolveAssetPath(kDefaultModelPath);
+        std::string error;
+        if (!scene.load(resolved, &error)) {
+            app_log::error("Startup model load failed: " + error);
+        }
+    }
+
     while (!WindowShouldClose()) {
+        scene.update(GetFrameTime());
+
+        // 环绕相机控制 (鼠标移动旋转 / 滚轮缩放), 悬停在 ImGui 面板上时不生效
+        if (orbitalControl && !ImGui::GetIO().WantCaptureMouse) {
+            UpdateCamera(&camera, CAMERA_ORBITAL);
+        }
+
         BeginDrawing();
-        ClearBackground(RAYWHITE);
-        DrawText("Welcome to raylib!", 200, 200, 40, DARKGRAY);
-        DrawText(message.c_str(), 200, 260, 20, DARKGRAY);
+        ClearBackground(kBackgroundColor);
+
+        BeginMode3D(camera);
+        DrawGrid(20, 1.0f);
+        scene.draw(transform, drawWires);
+        if (showBounds) {
+            scene.drawBounds(transform);
+        }
+        EndMode3D();
 
         rlImGuiBegin();
         ImGui::SetNextWindowPos(ImVec2(20, 20), ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowSize(ImVec2(280, 140), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(430, 0), ImGuiCond_FirstUseEver);
         if (ImGui::Begin("Phoenix")) {
             ImGui::Text("FPS: %d", GetFPS());
             ImGui::TextWrapped("%s", message.c_str());
             ImGui::Checkbox("Show ImGui demo window", &showDemo);
+            ImGui::Separator();
+
+            // ---- 模型 ----
+            if (ImGui::CollapsingHeader("模型", ImGuiTreeNodeFlags_DefaultOpen)) {
+                ImGui::InputText("路径", modelPath, sizeof(modelPath));
+                if (ImGui::Button("加载模型")) {
+                    const std::string resolved = resolveAssetPath(modelPath);
+                    std::string error;
+                    if (scene.load(resolved, &error)) {
+                        app_log::info("Model loaded: " + resolved);
+                    } else {
+                        app_log::error(error);
+                    }
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("默认路径")) {
+                    std::snprintf(modelPath, sizeof(modelPath), "%s", kDefaultModelPath);
+                }
+
+                if (scene.isLoaded()) {
+                    const model_loader::ModelStats stats = scene.stats();
+                    ImGui::Text("网格: %d  顶点: %d  三角形: %d", stats.meshCount, stats.vertexCount, stats.triangleCount);
+                    ImGui::Text("材质: %d  动画: %d", stats.materialCount, stats.animationCount);
+                    ImGui::Separator();
+
+                    ImGui::DragFloat3("位置", transform.position, 0.05f);
+                    ImGui::DragFloat3("旋转轴", transform.rotationAxis, 0.01f);
+                    ImGui::SliderFloat("旋转角度", &transform.rotationAngle, -180.0f, 180.0f);
+                    ImGui::DragFloat3("缩放", transform.scale, 0.01f);
+                    ImGui::Checkbox("线框显示", &drawWires);
+                    ImGui::Checkbox("包围盒", &showBounds);
+                    ImGui::Separator();
+
+                    if (scene.animationCount() > 0) {
+                        const std::vector<std::string> &names = scene.animationNames();
+                        std::vector<const char *> items;
+                        items.reserve(names.size());
+                        for (const std::string &name : names) {
+                            items.push_back(name.c_str());
+                        }
+
+                        int active = scene.activeAnimation();
+                        if (active < 0) {
+                            active = 0;
+                        }
+                        if (ImGui::Combo("动画", &active, items.data(), static_cast<int>(items.size()))) {
+                            scene.setActiveAnimation(active);
+                        }
+
+                        bool playing = scene.playing();
+                        if (ImGui::Checkbox("播放", &playing)) {
+                            scene.setPlaying(playing);
+                        }
+                        bool loop = scene.loop();
+                        if (ImGui::Checkbox("循环", &loop)) {
+                            scene.setLoop(loop);
+                        }
+                        float speed = scene.speed();
+                        if (ImGui::SliderFloat("速度", &speed, 0.0f, 3.0f)) {
+                            scene.setSpeed(speed);
+                        }
+                        ImGui::Text("当前帧: %.1f", scene.currentFrame());
+                    } else {
+                        ImGui::TextDisabled("该模型不含动画数据");
+                    }
+                } else {
+                    ImGui::TextDisabled("未加载模型");
+                }
+            }
+
+            // ---- 相机 ----
+            if (ImGui::CollapsingHeader("相机", ImGuiTreeNodeFlags_DefaultOpen)) {
+                ImGui::Checkbox("鼠标环绕控制 (移动旋转 / 滚轮缩放)", &orbitalControl);
+                ImGui::BeginDisabled(orbitalControl);
+                ImGui::DragFloat3("位置", &camera.position.x, 0.1f);
+                ImGui::DragFloat3("目标点", &camera.target.x, 0.1f);
+                ImGui::DragFloat3("Up", &camera.up.x, 0.01f);
+                ImGui::SliderFloat("FOV", &camera.fovy, 20.0f, 120.0f);
+                int projection = camera.projection;
+                if (ImGui::Combo("投影", &projection, "透视\0正交\0")) {
+                    camera.projection = projection;
+                }
+                ImGui::EndDisabled();
+                ImGui::Separator();
+
+                if (ImGui::Button("默认视角")) {
+                    resetCamera(camera, {8.0f, 6.0f, 10.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, 45.0f, CAMERA_PERSPECTIVE);
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("前视")) {
+                    resetCamera(camera, {0.0f, 0.0f, 10.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, 45.0f, CAMERA_PERSPECTIVE);
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("后视")) {
+                    resetCamera(camera, {0.0f, 0.0f, -10.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, 45.0f, CAMERA_PERSPECTIVE);
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("左视")) {
+                    resetCamera(camera, {-10.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, 45.0f, CAMERA_PERSPECTIVE);
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("右视")) {
+                    resetCamera(camera, {10.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, 45.0f, CAMERA_PERSPECTIVE);
+                }
+                if (ImGui::Button("俯视")) {
+                    resetCamera(camera, {0.0f, 10.0f, 0.001f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, -1.0f}, 45.0f, CAMERA_PERSPECTIVE);
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("适配模型")) {
+                    fitCameraToModel(camera, scene);
+                }
+            }
         }
         ImGui::End();
         if (showDemo) {
@@ -46,6 +296,7 @@ int main() {
         EndDrawing();
     }
 
+    scene.unload();
     rlImGuiShutdown();
     CloseWindow();
     app_log::info("Window closed");
