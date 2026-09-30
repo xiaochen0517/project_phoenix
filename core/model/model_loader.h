@@ -22,6 +22,16 @@ struct ModelStats {
     int animationCount = 0;
 };
 
+// 材质贴图槽 (取值与 raylib MaterialMapIndex 一致, 避免在头文件暴露 raylib 类型)
+enum class MaterialMapType {
+    Albedo = 0,      // 基础色 / 漫反射
+    Metalness = 1,   // 金属度
+    Normal = 2,      // 法线
+    Roughness = 3,   // 粗糙度
+    Occlusion = 4,   // 环境光遮蔽
+    Emission = 5,    // 自发光
+};
+
 // 模型加载与动画播放封装 (内部持有 raylib Model / ModelAnimation, 不向应用层暴露)
 class ModelScene {
 public:
@@ -62,6 +72,9 @@ public:
     bool bounds(float center[3], float size[3]) const;
 
     ModelStats stats() const;
+
+    // 动态加载贴图并绑定到模型所有材质的指定贴图槽 (mapType 见 MaterialMapType)
+    bool applyTexture(MaterialMapType mapType, const std::string &path, std::string *error = nullptr);
 
 private:
     bool loaded_ = false;

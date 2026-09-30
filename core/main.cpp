@@ -18,7 +18,8 @@ namespace {
 constexpr int kScreenWidth = 2560;
 constexpr int kScreenHeight = 1440;
 
-constexpr const char *kDefaultModelPath = "assets/models/cartoon_man.glb";
+constexpr const char *kDefaultModelPath = "assets/models/body/MaleBody.glb";
+constexpr const char *kDefaultTexturePath = "assets/texture/body/MaleBody01.png";
 
 constexpr Color kBackgroundColor{32, 36, 40, 255};
 
@@ -71,6 +72,18 @@ void fitCameraToModel(Camera3D &camera, const model_loader::ModelScene &scene) {
     const float distance = (maxSize / std::tan(camera.fovy * 0.5f * DEG2RAD)) * 1.4f;
     resetCamera(camera, {center[0] + distance * 0.6f, center[1] + distance * 0.5f, center[2] + distance},
                 {center[0], center[1], center[2]}, {0.0f, 1.0f, 0.0f}, camera.fovy, camera.projection);
+}
+
+// 将模型平移, 使其本地包围盒的底面中心落在世界原点 (角色站在网格平面上, 水平居中)
+void centerModelOnGrid(model_loader::Transform &transform, const model_loader::ModelScene &scene) {
+    float center[3];
+    float size[3];
+    if (!scene.bounds(center, size)) {
+        return;
+    }
+    transform.position[0] = -center[0];
+    transform.position[1] = -(center[1] - size[1] * 0.5f);
+    transform.position[2] = -center[2];
 }
 
 // ImGui 默认字体 ProggyClean 为位图字体, 仅含 ASCII/Latin 字形, 中文会渲染为 '?'。
@@ -137,7 +150,9 @@ int main() {
 
     model_loader::ModelScene scene;
     char modelPath[512] = {0};
+    char texturePath[512] = {0};
     std::snprintf(modelPath, sizeof(modelPath), "%s", kDefaultModelPath);
+    std::snprintf(texturePath, sizeof(texturePath), "%s", kDefaultTexturePath);
 
     // 启动时加载默认模型, 验证 raylib 模型加载链路 (必须在 InitWindow 之后, 纹理上传需要 GL 上下文)
     {
@@ -145,6 +160,12 @@ int main() {
         std::string error;
         if (!scene.load(resolved, &error)) {
             app_log::error("Startup model load failed: " + error);
+        } else {
+            centerModelOnGrid(transform, scene);
+            std::string texError;
+            if (!scene.applyTexture(model_loader::MaterialMapType::Albedo, resolveAssetPath(kDefaultTexturePath), &texError)) {
+                app_log::warn("Startup texture apply failed: " + texError);
+            }
         }
     }
 
@@ -184,6 +205,11 @@ int main() {
                     std::string error;
                     if (scene.load(resolved, &error)) {
                         app_log::info("Model loaded: " + resolved);
+                        centerModelOnGrid(transform, scene);
+                        std::string texError;
+                        if (!scene.applyTexture(model_loader::MaterialMapType::Albedo, resolveAssetPath(texturePath), &texError)) {
+                            app_log::warn(texError);
+                        }
                     } else {
                         app_log::error(error);
                     }
@@ -191,6 +217,14 @@ int main() {
                 ImGui::SameLine();
                 if (ImGui::Button("默认路径")) {
                     std::snprintf(modelPath, sizeof(modelPath), "%s", kDefaultModelPath);
+                }
+
+                ImGui::InputText("贴图路径", texturePath, sizeof(texturePath));
+                if (ImGui::Button("应用贴图")) {
+                    std::string texError;
+                    if (!scene.applyTexture(model_loader::MaterialMapType::Albedo, resolveAssetPath(texturePath), &texError)) {
+                        app_log::error(texError);
+                    }
                 }
 
                 if (scene.isLoaded()) {

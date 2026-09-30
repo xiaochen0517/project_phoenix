@@ -203,4 +203,34 @@ ModelStats ModelScene::stats() const {
     return result;
 }
 
+bool ModelScene::applyTexture(MaterialMapType mapType, const std::string &path, std::string *error) {
+    if (!loaded_) {
+        if (error != nullptr) {
+            *error = "未加载模型, 无法应用贴图";
+        }
+        return false;
+    }
+
+    Texture2D texture = LoadTexture(path.c_str());
+    if (texture.id == 0) {
+        if (error != nullptr) {
+            *error = "raylib LoadTexture 失败 (文件不存在或格式不支持): " + path;
+        }
+        app_log::error("Texture load failed: " + path);
+        return false;
+    }
+
+    Model *model = static_cast<Model *>(model_);
+    const int map = static_cast<int>(mapType);
+    for (int i = 0; i < model->materialCount; ++i) {
+        // 注意: 仅覆盖引用, 不主动 Unload 旧贴图; 同一贴图可能被多个材质共享, 重复 Unload 会崩溃。
+        // 旧贴图随 UnloadModel 一并释放 (加载新模型时会 unload)。
+        SetMaterialTexture(&model->materials[i], map, texture);
+    }
+
+    app_log::info("Texture applied: " + path + " (map=" + std::to_string(map) +
+                  ", materials=" + std::to_string(model->materialCount) + ")");
+    return true;
+}
+
 }  // namespace model_loader
