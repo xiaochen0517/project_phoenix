@@ -6,6 +6,7 @@
 
 #include "imgui.h"
 #include "raylib.h"
+#include "rcamera.h"
 #include "rlImGui.h"
 
 #include "log/app_log.h"
@@ -86,6 +87,58 @@ void centerModelOnGrid(model_loader::Transform &transform, const model_loader::M
     transform.position[2] = -center[2];
 }
 
+// 编辑器风格手动飞行相机: WASD 前后左右 (以视角朝向为准), Space/Ctrl 升降, 右键按住捕获鼠标并旋转视角。
+// 移动量按帧时间缩放 (帧率无关); 旋转量按鼠标像素增量计算。移动用 WantCaptureKeyboard、旋转用 WantCaptureMouse 分别门控。
+// 注意: raylib 的 DisableCursor/EnableCursor 内部会把鼠标重置到屏幕中心, 必须只在捕获状态切换时各调用一次,
+// 否则每帧重置鼠标会导致光标被吸附到中心且 GetMouseDelta 失效。
+void updateManualCamera(Camera3D &camera, float moveSpeed, float rotateSpeed, bool &capturing) {
+    ImGuiIO &io = ImGui::GetIO();
+    const float dist = moveSpeed * GetFrameTime();
+
+    if (!io.WantCaptureKeyboard) {
+        if (IsKeyDown(KEY_W)) {
+            CameraMoveForward(&camera, dist, false);
+        }
+        if (IsKeyDown(KEY_S)) {
+            CameraMoveForward(&camera, -dist, false);
+        }
+        if (IsKeyDown(KEY_D)) {
+            CameraMoveRight(&camera, dist, false);
+        }
+        if (IsKeyDown(KEY_A)) {
+            CameraMoveRight(&camera, -dist, false);
+        }
+        if (IsKeyDown(KEY_SPACE)) {
+            CameraMoveUp(&camera, dist);
+        }
+        if (IsKeyDown(KEY_LEFT_CONTROL)) {
+            CameraMoveUp(&camera, -dist);
+        }
+    }
+
+    const bool wantCapture = !io.WantCaptureMouse && IsMouseButtonDown(MOUSE_BUTTON_RIGHT);
+    bool applyRotation = wantCapture;
+
+    // rlImGui 每帧会按 ImGui 光标形状调用 ShowCursor/HideCursor, 与捕获逻辑冲突;
+    // 捕获期间置位 NoMouseCursorChange 独占光标控制, 释放时恢复。
+    if (wantCapture && !capturing) {
+        capturing = true;
+        DisableCursor();
+        io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
+        applyRotation = false;  // DisableCursor 会把鼠标重置到中心, 捕获首帧的 delta 是跳变, 跳过
+    } else if (!wantCapture && capturing) {
+        capturing = false;
+        io.ConfigFlags &= ~ImGuiConfigFlags_NoMouseCursorChange;
+        EnableCursor();
+    }
+
+    if (applyRotation) {
+        const Vector2 delta = GetMouseDelta();
+        CameraYaw(&camera, -delta.x * rotateSpeed, false);
+        CameraPitch(&camera, -delta.y * rotateSpeed, true, false, false);
+    }
+}
+
 // ImGui 默认字体 ProggyClean 为位图字体, 仅含 ASCII/Latin 字形, 中文会渲染为 '?'。
 // 这里在字体图集首次构建前加载系统 CJK 字体并设为默认字体 (含 Latin + CJK 字形),
 // 并统一放大到 16px 以适配 2K 窗口。
@@ -143,6 +196,10 @@ int main() {
     Camera3D camera{};
     resetCamera(camera, {8.0f, 6.0f, 10.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, 45.0f, CAMERA_PERSPECTIVE);
     bool orbitalControl = false;
+    bool manualControl = false;
+    bool manualCapturing = false;      // 手动飞行相机是否正在捕获鼠标 (右键按住)
+    float cameraMoveSpeed = 5.0f;      // 移动速度 (单位/秒)
+    float cameraRotateSpeed = 0.003f;  // 旋转速度 (弧度/像素)
 
     model_loader::Transform transform{};
     bool drawWires = false;
@@ -175,6 +232,16 @@ int main() {
         // 环绕相机控制 (鼠标移动旋转 / 滚轮缩放), 悬停在 ImGui 面板上时不生效
         if (orbitalControl && !ImGui::GetIO().WantCaptureMouse) {
             UpdateCamera(&camera, CAMERA_ORBITAL);
+        }
+
+        // 手动飞行相机 (WASD 移动 / 右键旋转)
+        if (manualControl) {
+            updateManualCamera(camera, cameraMoveSpeed, cameraRotateSpeed, manualCapturing);
+        } else if (manualCapturing) {
+            // 关闭手动操作时若仍在捕获, 恢复光标 (防御性)
+            manualCapturing = false;
+            ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NoMouseCursorChange;
+            EnableCursor();
         }
 
         BeginDrawing();
@@ -280,8 +347,19 @@ int main() {
 
             // ---- 相机 ----
             if (ImGui::CollapsingHeader("相机", ImGuiTreeNodeFlags_DefaultOpen)) {
-                ImGui::Checkbox("鼠标环绕控制 (移动旋转 / 滚轮缩放)", &orbitalControl);
-                ImGui::BeginDisabled(orbitalControl);
+                if (ImGui::Checkbox("鼠标环绕控制 (移动旋转 / 滚轮缩放)", &orbitalControl) && orbitalControl) {
+                    manualControl = false;
+                }
+                if (ImGui::Checkbox("手动操作 (WASD/空格/Ctrl 移动, 右键旋转)", &manualControl) && manualControl) {
+                    orbitalControl = false;
+                }
+
+                ImGui::BeginDisabled(!manualControl);
+                ImGui::SliderFloat("移动速度", &cameraMoveSpeed, 0.1f, 50.0f);
+                ImGui::SliderFloat("旋转速度", &cameraRotateSpeed, 0.0005f, 0.01f, "%.4f");
+                ImGui::EndDisabled();
+
+                ImGui::BeginDisabled(orbitalControl || manualControl);
                 ImGui::DragFloat3("位置", &camera.position.x, 0.1f);
                 ImGui::DragFloat3("目标点", &camera.target.x, 0.1f);
                 ImGui::DragFloat3("Up", &camera.up.x, 0.01f);
