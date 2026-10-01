@@ -4,8 +4,8 @@ add_executable(project_phoenix
     app/model_viewer_game.cpp
     util/asset_path.cpp
     log/app_log.cpp
-    script/lua_runner.cpp
-    script/sol2_bridge.cpp
+    script/lua_engine.cpp
+    script/api_registry.cpp
     model/model_loader.cpp
 )
 
@@ -20,16 +20,23 @@ target_link_libraries(project_phoenix PRIVATE raylib rlimgui spdlog::spdlog ${LU
 # 仅复用可自动测试的纯逻辑模块 (log / script), 链接 Catch2 提供的 main。
 add_executable(project_phoenix_tests
     log/app_log.cpp
-    script/lua_runner.cpp
-    script/sol2_bridge.cpp
-    tests/test_lua_runner.cpp
-    tests/test_sol2_bridge.cpp
+    script/lua_engine.cpp
+    script/api_registry.cpp
+    tests/test_lua_engine.cpp
+    tests/test_api_bindings.cpp
     tests/test_app_log.cpp
+    tests/success_listener.cpp
 )
 
 target_include_directories(project_phoenix_tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${LUAJIT_INCLUDE_DIR}
+)
+
+# 无头测试不能依赖 raylib 的 FileExists/GetApplicationDirectory 定位脚本目录,
+# 故将项目根目录下的 lua/ 绝对路径注入测试目标, 测试据此拼接脚本完整路径。
+target_compile_definitions(project_phoenix_tests PRIVATE
+    PROJECT_PHOENIX_LUA_DIR="${CMAKE_SOURCE_DIR}/lua"
 )
 
 target_link_libraries(project_phoenix_tests PRIVATE Catch2::Catch2WithMain spdlog::spdlog ${LUAJIT_LIBRARY} sol2::sol2)

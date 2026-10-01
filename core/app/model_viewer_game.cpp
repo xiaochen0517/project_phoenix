@@ -11,8 +11,6 @@
 #include "rlImGui.h"
 
 #include "log/app_log.h"
-#include "script/lua_runner.h"
-#include "script/sol2_bridge.h"
 #include "util/asset_path.h"
 
 namespace {
@@ -115,17 +113,6 @@ namespace {
 
 namespace app {
     bool ModelViewerGame::init() {
-        // LuaJIT + sol2 启动自检 (迁移自原 main.cpp)
-        luaMessage_ = lua_runner::eval_string(
-            "local sum = 0\n"
-            "for i = 1, 1e7 do sum = sum + i end\n"
-            "return string.format('%s (%s), sum=%d, jit.status=%s', "
-            "jit.version, _VERSION, sum, jit.status())");
-        app_log::info("LuaJIT result: " + luaMessage_);
-
-        sol2Report_ = sol2_bridge::self_test();
-        app_log::info("sol2 self-test:\n" + sol2Report_);
-
         // 相机默认值
         resetCamera(camera_, {8.0f, 6.0f, 10.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, 45.0f, CAMERA_PERSPECTIVE);
 
@@ -201,14 +188,8 @@ namespace app {
         ImGui::SetNextWindowSize(ImVec2(430, 0), ImGuiCond_FirstUseEver);
         if (ImGui::Begin("Phoenix")) {
             ImGui::Text("FPS: %d", GetFPS());
-            ImGui::TextWrapped("%s", luaMessage_.c_str());
             ImGui::Checkbox("Show ImGui demo window", &showDemo_);
             ImGui::Separator();
-
-            // ---- 脚本 ----
-            if (ImGui::CollapsingHeader("LuaJIT + sol2")) {
-                ImGui::TextWrapped("%s", sol2Report_.c_str());
-            }
 
             // ---- 模型 ----
             if (ImGui::CollapsingHeader("模型", ImGuiTreeNodeFlags_DefaultOpen)) {

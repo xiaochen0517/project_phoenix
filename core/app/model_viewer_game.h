@@ -1,7 +1,5 @@
 #pragma once
 
-#include <string>
-
 #include "raylib.h"
 
 #include "app/game.h"
@@ -39,8 +37,5 @@ namespace app {
         char texturePath_[512]{};
 
         bool showDemo_ = false;
-
-        std::string luaMessage_;
-        std::string sol2Report_;
     };
 } // namespace app
