@@ -34,6 +34,9 @@ find_package(Catch2 CONFIG REQUIRED)
 # nlohmann/json (header-only, vcpkg manifest 模式), 供 config/ 模块解析 JSON。
 find_package(nlohmann_json CONFIG REQUIRED)
 
+# entt (header-only ECS, vcpkg manifest 模式), 供 ecs/ 模块。
+find_package(EnTT CONFIG REQUIRED)
+
 # 启用 ctest (在 core/ 下经 add_test 注册测试目标)。
 enable_testing()
 

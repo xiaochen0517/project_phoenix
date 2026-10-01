@@ -8,6 +8,7 @@ add_executable(project_phoenix
     script/api_registry.cpp
     event/event_bus.cpp
     config/config.cpp
+    ecs/ecs.cpp
     model/model_loader.cpp
 )
 
@@ -16,7 +17,8 @@ target_include_directories(project_phoenix PRIVATE
     ${LUAJIT_INCLUDE_DIR}
 )
 
-target_link_libraries(project_phoenix PRIVATE raylib rlimgui spdlog::spdlog ${LUAJIT_LIBRARY} sol2::sol2 nlohmann_json::nlohmann_json)
+target_link_libraries(project_phoenix PRIVATE raylib rlimgui spdlog::spdlog ${LUAJIT_LIBRARY} sol2::sol2 nlohmann_json::nlohmann_json
+    EnTT::EnTT)
 
 # 单元测试目标: 无头运行, 不链接 raylib / rlimgui / model_loader (后者需 GL 上下文与资产)。
 # 仅复用可自动测试的纯逻辑模块 (log / script), 链接 Catch2 提供的 main。
@@ -26,10 +28,12 @@ add_executable(project_phoenix_tests
     script/api_registry.cpp
     event/event_bus.cpp
     config/config.cpp
+    ecs/ecs.cpp
     tests/test_lua_engine.cpp
     tests/test_api_bindings.cpp
     tests/test_event_bus.cpp
     tests/test_config.cpp
+    tests/test_ecs.cpp
     tests/test_app_log.cpp
     tests/success_listener.cpp
 )
@@ -47,6 +51,6 @@ target_compile_definitions(project_phoenix_tests PRIVATE
 )
 
 target_link_libraries(project_phoenix_tests PRIVATE Catch2::Catch2WithMain spdlog::spdlog ${LUAJIT_LIBRARY} sol2::sol2
-    nlohmann_json::nlohmann_json)
+    nlohmann_json::nlohmann_json EnTT::EnTT)
 
 add_test(NAME project_phoenix_tests COMMAND project_phoenix_tests)
