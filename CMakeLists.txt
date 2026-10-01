@@ -28,6 +28,12 @@ endif()
 # sol2 为 header-only 绑定库, vcpkg 提供 CMake config (target sol2::sol2)。
 find_package(sol2 CONFIG REQUIRED)
 
+# Catch2 单元测试框架 (vcpkg manifest 模式)。
+find_package(Catch2 CONFIG REQUIRED)
+
+# 启用 ctest (在 core/ 下经 add_test 注册测试目标)。
+enable_testing()
+
 # raylib 与项目使用同一个 compiler 从源码构建, 并使用其自带的 GLFW。
 # 不要改用 vcpkg 的 raylib: 它使用外部 glfw3 (USE_EXTERNAL_GLFW=ON),
 # 在本项目环境下会导致首帧后 swap 忙等, 窗口无响应。
