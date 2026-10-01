@@ -24,7 +24,7 @@ struct Params {
     float target[3]{0.0f, 0.0f, 0.0f};
     float up[3]{0.0f, 1.0f, 0.0f};
     float fovy = 45.0f;
-    int projection = 0; // 0 = 透视(CAMERA_PERSPECTIVE), 1 = 正交(CAMERA_ORTHOGRAPHIC)
+    int projection = 0;     // 0 = 透视(CAMERA_PERSPECTIVE), 1 = 正交(CAMERA_ORTHOGRAPHIC)
     float distance = 10.0f; // 相机到目标点距离（isometric 用于推导位置）
 };
 

@@ -127,9 +127,8 @@ void register_camera(lua_State* L, camera::Manager& manager) {
     cam["get_active_id"] = [&manager]() { return static_cast<double>(manager.active()); };
 
     // switch(name_or_id): 名称或 id 切换活动相机, 返回是否成功。
-    cam["switch"] = sol::overload(
-        [&manager](const std::string& name) { return manager.set_active(name); },
-        [&manager](double id) { return manager.set_active(static_cast<camera::Id>(id)); });
+    cam["switch"] = sol::overload([&manager](const std::string& name) { return manager.set_active(name); },
+                                  [&manager](double id) { return manager.set_active(static_cast<camera::Id>(id)); });
 
     // set_param(key, value): 改活动相机参数 (value 为 number), 返回是否成功。
     cam["set_param"] = [&manager](const std::string& key, double value) {

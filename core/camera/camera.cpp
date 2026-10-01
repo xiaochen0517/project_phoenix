@@ -69,26 +69,26 @@ void apply_isometric(Params& params) {
 }
 
 Manager::Instance* Manager::find_instance(Id id) {
-    const auto it = std::find_if(instances_.begin(), instances_.end(),
-                                 [id](const Instance& inst) { return inst.id == id; });
+    const auto it =
+        std::find_if(instances_.begin(), instances_.end(), [id](const Instance& inst) { return inst.id == id; });
     return it == instances_.end() ? nullptr : &(*it);
 }
 
 const Manager::Instance* Manager::find_instance(Id id) const {
-    const auto it = std::find_if(instances_.begin(), instances_.end(),
-                                 [id](const Instance& inst) { return inst.id == id; });
+    const auto it =
+        std::find_if(instances_.begin(), instances_.end(), [id](const Instance& inst) { return inst.id == id; });
     return it == instances_.end() ? nullptr : &(*it);
 }
 
 Manager::Instance* Manager::find_instance(const std::string& name) {
-    const auto it = std::find_if(instances_.begin(), instances_.end(),
-                                 [&name](const Instance& inst) { return inst.name == name; });
+    const auto it =
+        std::find_if(instances_.begin(), instances_.end(), [&name](const Instance& inst) { return inst.name == name; });
     return it == instances_.end() ? nullptr : &(*it);
 }
 
 const Manager::Instance* Manager::find_instance(const std::string& name) const {
-    const auto it = std::find_if(instances_.begin(), instances_.end(),
-                                 [&name](const Instance& inst) { return inst.name == name; });
+    const auto it =
+        std::find_if(instances_.begin(), instances_.end(), [&name](const Instance& inst) { return inst.name == name; });
     return it == instances_.end() ? nullptr : &(*it);
 }
 
@@ -110,8 +110,8 @@ Id Manager::create(const std::string& name, Type type, const Params& params) {
 }
 
 bool Manager::destroy(Id id) {
-    const auto it = std::find_if(instances_.begin(), instances_.end(),
-                                 [id](const Instance& inst) { return inst.id == id; });
+    const auto it =
+        std::find_if(instances_.begin(), instances_.end(), [id](const Instance& inst) { return inst.id == id; });
     if (it == instances_.end()) {
         return false;
     }

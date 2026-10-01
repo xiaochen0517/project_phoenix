@@ -40,7 +40,5 @@ class ModelViewerGame : public Game {
     model_loader::ModelScene scene_;
     char modelPath_[512]{};
     char texturePath_[512]{};
-
-    bool showDemo_ = false;
 };
 } // namespace app

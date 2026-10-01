@@ -206,7 +206,6 @@ void ModelViewerGame::renderUi() {
     ImGui::SetNextWindowSize(ImVec2(430, 0), ImGuiCond_FirstUseEver);
     if (ImGui::Begin("Phoenix")) {
         ImGui::Text("FPS: %d", GetFPS());
-        ImGui::Checkbox("Show ImGui demo window", &showDemo_);
         ImGui::Separator();
 
         // ---- 模型 ----
@@ -306,14 +305,48 @@ void ModelViewerGame::renderUi() {
             ImGui::SliderFloat("旋转速度", &cameraRotateSpeed_, 0.0005f, 0.01f, "%.4f");
             ImGui::EndDisabled();
 
-            ImGui::BeginDisabled(orbitalControl_ || manualControl_);
-            ImGui::DragFloat3("位置", &camera_.position.x, 0.1f);
-            ImGui::DragFloat3("目标点", &camera_.target.x, 0.1f);
-            ImGui::DragFloat3("Up", &camera_.up.x, 0.01f);
-            ImGui::SliderFloat("FOV", &camera_.fovy, 20.0f, 120.0f);
-            int projection = camera_.projection;
-            if (ImGui::Combo("投影", &projection, "透视\0正交\0")) {
-                camera_.projection = projection;
+            // 活动相机参数编辑: 与 Lua api.camera.set_param 使用同一键集与数据源
+            // (distance / target_* / up_* / fov / projection)。isometric 相机的位置由
+            // distance + target 推导, 故面板不直接暴露 position (由 set_param 联动重算)。
+            const camera::Params* params = cameraManager_.active_params();
+            ImGui::BeginDisabled(orbitalControl_ || manualControl_ || params == nullptr);
+            if (params != nullptr) {
+                bool changed = false;
+
+                float distance = params->distance;
+                if (ImGui::DragFloat("距离", &distance, 0.1f)) {
+                    changed |= cameraManager_.set_param_active("distance", distance);
+                }
+
+                float target[3] = {params->target[0], params->target[1], params->target[2]};
+                if (ImGui::DragFloat3("目标点", target, 0.1f)) {
+                    changed |= cameraManager_.set_param_active("target_x", target[0]);
+                    changed |= cameraManager_.set_param_active("target_y", target[1]);
+                    changed |= cameraManager_.set_param_active("target_z", target[2]);
+                }
+
+                float up[3] = {params->up[0], params->up[1], params->up[2]};
+                if (ImGui::DragFloat3("Up", up, 0.01f)) {
+                    changed |= cameraManager_.set_param_active("up_x", up[0]);
+                    changed |= cameraManager_.set_param_active("up_y", up[1]);
+                    changed |= cameraManager_.set_param_active("up_z", up[2]);
+                }
+
+                float fovy = params->fovy;
+                if (ImGui::SliderFloat("FOV", &fovy, 20.0f, 120.0f)) {
+                    changed |= cameraManager_.set_param_active("fov", fovy);
+                }
+
+                int projection = params->projection;
+                if (ImGui::Combo("投影", &projection, "透视\0正交\0")) {
+                    changed |= cameraManager_.set_param_active("projection", projection);
+                }
+
+                if (changed) {
+                    camera_ = camera::to_camera3d(*cameraManager_.active_params());
+                }
+            } else {
+                ImGui::TextDisabled("无活动相机");
             }
             ImGui::EndDisabled();
             ImGui::Separator();
@@ -353,8 +386,5 @@ void ModelViewerGame::renderUi() {
         }
     }
     ImGui::End();
-    if (showDemo_) {
-        ImGui::ShowDemoWindow(&showDemo_);
-    }
 }
 } // namespace app
