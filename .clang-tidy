@@ -1,0 +1,4 @@
+# Clang-Tidy 配置
+# 关闭 modernize 系列提示（例如 modernize-use-nodiscard 的 [[nodiscard]] 建议），
+# 保留诊断类（clang-diagnostic-*）与静态分析类（clang-analyzer-*）检查。
+Checks: 'clang-diagnostic-*,clang-analyzer-*,-modernize-*'

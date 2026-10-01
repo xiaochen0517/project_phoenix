@@ -17,6 +17,10 @@
 ### 架构变更
 - 更新依赖库、架构或关键设计时，同步更新 `docs/项目架构文档.md`。
 
+## 代码格式
+
+- 所有生成或修改的 C++ 代码必须严格遵循根目录 `.clang-format` 的格式（BasedOnStyle: Microsoft，缩进 4 空格、禁用 Tab、行宽 120、`PointerAlignment: Left`、include 自动排序并 Regroup）。提交前用 clang-format 格式化，确保与配置文件一致。
+
 ## 构建与运行
 
 - 只通过 CMake preset 构建：Windows 用 `msvc-debug` / `msvc-release`，Linux 用 `linux-debug` / `linux-release`。

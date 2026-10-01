@@ -14,9 +14,9 @@ TEST_CASE("eval_string returns a string result") {
 
 TEST_CASE("eval_string executes a multi-line script") {
     const std::string script =
-        "local s = 0\n"
-        "for i = 1, 10 do s = s + i end\n"
-        "return s";
+            "local s = 0\n"
+            "for i = 1, 10 do s = s + i end\n"
+            "return s";
     REQUIRE(lua_runner::eval_string(script) == "55");
 }
 

@@ -1,5 +1,8 @@
 add_executable(project_phoenix
     main.cpp
+    app/app.cpp
+    app/model_viewer_game.cpp
+    util/asset_path.cpp
     log/app_log.cpp
     script/lua_runner.cpp
     script/sol2_bridge.cpp
