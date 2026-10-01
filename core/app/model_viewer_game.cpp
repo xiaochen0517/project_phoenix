@@ -1,9 +1,11 @@
 #include "app/model_viewer_game.h"
 
+#include "camera/camera_raylib.h"
 #include "imgui.h"
 #include "log/app_log.h"
 #include "rcamera.h"
 #include "rlImGui.h"
+#include "script/api_registry.h"
 #include "util/asset_path.h"
 
 #include <algorithm>
@@ -131,6 +133,23 @@ bool ModelViewerGame::init() {
             app_log::warn("Startup texture apply failed: " + texError);
         }
     }
+
+    // P0-08: 相机系统骨架最小接线 —— 引入 camera::Manager + Lua 引擎, 注册 api.camera.*,
+    // 加载演示脚本由 Lua 配置/切换相机, 并把活动相机同步到渲染相机 (camera_)。
+    camera::Params params;
+    params.distance = 15.0f;
+    cameraManager_.create("default", camera::Type::Isometric, params);
+    params.distance = 25.0f;
+    cameraManager_.create("overview", camera::Type::Isometric, params);
+    params.distance = 8.0f;
+    cameraManager_.create("near", camera::Type::Isometric, params);
+    cameraManager_.set_active("default");
+
+    api::register_all(lua_);
+    api::register_camera(lua_.raw_state(), cameraManager_);
+    lua_.do_file(asset_path::resolve("lua/demo_camera.lua"));
+
+    camera_ = camera::to_camera3d(*cameraManager_.active_params());
 
     return true;
 }

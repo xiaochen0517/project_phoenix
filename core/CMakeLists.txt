@@ -9,6 +9,7 @@ add_executable(project_phoenix
     event/event_bus.cpp
     config/config.cpp
     ecs/ecs.cpp
+    camera/camera.cpp
     model/model_loader.cpp
 )
 
@@ -29,11 +30,14 @@ add_executable(project_phoenix_tests
     event/event_bus.cpp
     config/config.cpp
     ecs/ecs.cpp
+    camera/camera.cpp
     tests/test_lua_engine.cpp
     tests/test_api_bindings.cpp
     tests/test_event_bus.cpp
     tests/test_config.cpp
     tests/test_ecs.cpp
+    tests/test_camera.cpp
+    tests/test_api_camera.cpp
     tests/test_app_log.cpp
     tests/success_listener.cpp
 )
@@ -44,10 +48,10 @@ target_include_directories(project_phoenix_tests PRIVATE
 )
 
 # 无头测试不能依赖 raylib 的 FileExists/GetApplicationDirectory 定位脚本目录,
-# 故将项目根目录下的 lua/ 绝对路径注入测试目标, 测试据此拼接脚本完整路径。
+# 故将项目根目录下的 lua/test 与 config/test 绝对路径注入测试目标, 测试据此拼接脚本完整路径。
 target_compile_definitions(project_phoenix_tests PRIVATE
-    PROJECT_PHOENIX_LUA_DIR="${CMAKE_SOURCE_DIR}/lua"
-    PROJECT_PHOENIX_CONFIG_DIR="${CMAKE_SOURCE_DIR}/config"
+    PROJECT_PHOENIX_LUA_DIR="${CMAKE_SOURCE_DIR}/lua/test"
+    PROJECT_PHOENIX_CONFIG_DIR="${CMAKE_SOURCE_DIR}/config/test"
 )
 
 target_link_libraries(project_phoenix_tests PRIVATE Catch2::Catch2WithMain spdlog::spdlog ${LUAJIT_LIBRARY} sol2::sol2

@@ -1,9 +1,11 @@
 #include "script/api_registry.h"
 
+#include "camera/camera.h"
 #include "event/event_bus.h"
 #include "log/app_log.h"
 #include "script/lua_engine.h"
 
+#include <cstddef>
 #include <memory>
 #include <sol/sol.hpp>
 #include <string>
@@ -110,6 +112,43 @@ void register_all(lua_engine::Engine& engine) {
     lua_State* L = engine.raw_state();
     register_log(L);
     register_util(L);
-    // 后续: register_camera(L); register_ecs(L); ...
+    // 后续: register_camera(L, manager); register_ecs(L); ...
+    // 注意: register_camera / register_event 依赖有状态对象 (camera::Manager / event::Bus),
+    //       与 register_all 分开, 由调用方注入实例 (见 tests 与 app 层)。
+}
+
+void register_camera(lua_State* L, camera::Manager& manager) {
+    sol::state_view lua(L);
+    sol::table api = lua["api"].get_or_create<sol::table>();
+    sol::table cam = api["camera"].get_or_create<sol::table>();
+
+    // 活动相机: 名称(string) + id(number) 双标识。
+    cam["get_active"] = [&manager]() { return manager.active_name(); };
+    cam["get_active_id"] = [&manager]() { return static_cast<double>(manager.active()); };
+
+    // switch(name_or_id): 名称或 id 切换活动相机, 返回是否成功。
+    cam["switch"] = sol::overload(
+        [&manager](const std::string& name) { return manager.set_active(name); },
+        [&manager](double id) { return manager.set_active(static_cast<camera::Id>(id)); });
+
+    // set_param(key, value): 改活动相机参数 (value 为 number), 返回是否成功。
+    cam["set_param"] = [&manager](const std::string& key, double value) {
+        return manager.set_param_active(key, value);
+    };
+
+    // list(): 返回相机名称表 (string 数组, 1-based)。
+    cam["list"] = [&manager, L]() {
+        sol::state_view lua(L);
+        sol::table table = lua.create_table();
+        const std::vector<std::string> names = manager.names();
+        for (std::size_t i = 0; i < names.size(); ++i) {
+            table[i + 1] = names[i];
+        }
+        return table;
+    };
+
+    // 占位 (P0 不实现, P1 补齐): 固定返回 false, 保证调用不报错。
+    cam["shake"] = [](sol::variadic_args) { return false; };
+    cam["set_follow"] = [](sol::variadic_args) { return false; };
 }
 } // namespace api
