@@ -12,6 +12,7 @@
 #include "log/app_log.h"
 #include "model/model_loader.h"
 #include "script/lua_runner.h"
+#include "script/sol2_bridge.h"
 
 namespace {
 
@@ -182,8 +183,14 @@ int main() {
     app_log::init();
 
     const std::string message = lua_runner::eval_string(
-        "return string.format('Hello from %s, 6 * 7 = %d', _VERSION, 6 * 7)");
-    app_log::info("Lua result: " + message);
+        "local sum = 0\n"
+        "for i = 1, 1e7 do sum = sum + i end\n"
+        "return string.format('%s (%s), sum=%d, jit.status=%s', "
+        "jit.version, _VERSION, sum, jit.status())");
+    app_log::info("LuaJIT result: " + message);
+
+    const std::string sol2Report = sol2_bridge::self_test();
+    app_log::info("sol2 self-test:\n" + sol2Report);
 
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow(kScreenWidth, kScreenHeight, "Project Phoenix - 模型查看器 (2K)");
@@ -263,6 +270,11 @@ int main() {
             ImGui::TextWrapped("%s", message.c_str());
             ImGui::Checkbox("Show ImGui demo window", &showDemo);
             ImGui::Separator();
+
+            // ---- 脚本 ----
+            if (ImGui::CollapsingHeader("LuaJIT + sol2")) {
+                ImGui::TextWrapped("%s", sol2Report.c_str());
+            }
 
             // ---- 模型 ----
             if (ImGui::CollapsingHeader("模型", ImGuiTreeNodeFlags_DefaultOpen)) {

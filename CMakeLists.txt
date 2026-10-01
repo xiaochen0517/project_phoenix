@@ -14,9 +14,19 @@ if(WIN32 AND NOT MSVC)
     message(FATAL_ERROR "Windows 仅支持 MSVC 工具链, 请使用 msvc-* preset。")
 endif()
 
-# spdlog / Lua 由 vcpkg (manifest 模式) 提供。
+# spdlog / LuaJIT 由 vcpkg (manifest 模式) 提供。
 find_package(spdlog CONFIG REQUIRED)
-find_package(Lua REQUIRED)
+
+# vcpkg 的 luajit port 仅导出 pkgconfig, 不提供 CMake config; 其安装布局固定为
+# include/luajit 与 lib/lua51 (abiver=51), 故直接用 find_path / find_library 定位。
+find_path(LUAJIT_INCLUDE_DIR NAMES lua.hpp PATH_SUFFIXES luajit)
+find_library(LUAJIT_LIBRARY NAMES lua51 liblua51)
+if(NOT LUAJIT_INCLUDE_DIR OR NOT LUAJIT_LIBRARY)
+    message(FATAL_ERROR "LuaJIT not found (expected vcpkg luajit port)")
+endif()
+
+# sol2 为 header-only 绑定库, vcpkg 提供 CMake config (target sol2::sol2)。
+find_package(sol2 CONFIG REQUIRED)
 
 # raylib 与项目使用同一个 compiler 从源码构建, 并使用其自带的 GLFW。
 # 不要改用 vcpkg 的 raylib: 它使用外部 glfw3 (USE_EXTERNAL_GLFW=ON),
