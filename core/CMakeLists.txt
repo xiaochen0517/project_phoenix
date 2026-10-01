@@ -7,6 +7,7 @@ add_executable(project_phoenix
     script/lua_engine.cpp
     script/api_registry.cpp
     event/event_bus.cpp
+    config/config.cpp
     model/model_loader.cpp
 )
 
@@ -15,7 +16,7 @@ target_include_directories(project_phoenix PRIVATE
     ${LUAJIT_INCLUDE_DIR}
 )
 
-target_link_libraries(project_phoenix PRIVATE raylib rlimgui spdlog::spdlog ${LUAJIT_LIBRARY} sol2::sol2)
+target_link_libraries(project_phoenix PRIVATE raylib rlimgui spdlog::spdlog ${LUAJIT_LIBRARY} sol2::sol2 nlohmann_json::nlohmann_json)
 
 # 单元测试目标: 无头运行, 不链接 raylib / rlimgui / model_loader (后者需 GL 上下文与资产)。
 # 仅复用可自动测试的纯逻辑模块 (log / script), 链接 Catch2 提供的 main。
@@ -24,9 +25,11 @@ add_executable(project_phoenix_tests
     script/lua_engine.cpp
     script/api_registry.cpp
     event/event_bus.cpp
+    config/config.cpp
     tests/test_lua_engine.cpp
     tests/test_api_bindings.cpp
     tests/test_event_bus.cpp
+    tests/test_config.cpp
     tests/test_app_log.cpp
     tests/success_listener.cpp
 )
@@ -40,8 +43,10 @@ target_include_directories(project_phoenix_tests PRIVATE
 # 故将项目根目录下的 lua/ 绝对路径注入测试目标, 测试据此拼接脚本完整路径。
 target_compile_definitions(project_phoenix_tests PRIVATE
     PROJECT_PHOENIX_LUA_DIR="${CMAKE_SOURCE_DIR}/lua"
+    PROJECT_PHOENIX_CONFIG_DIR="${CMAKE_SOURCE_DIR}/config"
 )
 
-target_link_libraries(project_phoenix_tests PRIVATE Catch2::Catch2WithMain spdlog::spdlog ${LUAJIT_LIBRARY} sol2::sol2)
+target_link_libraries(project_phoenix_tests PRIVATE Catch2::Catch2WithMain spdlog::spdlog ${LUAJIT_LIBRARY} sol2::sol2
+    nlohmann_json::nlohmann_json)
 
 add_test(NAME project_phoenix_tests COMMAND project_phoenix_tests)

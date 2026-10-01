@@ -14,6 +14,9 @@ UseTab: Never
 ColumnLimit: 120
 BreakBeforeBraces: Attach
 
+# 指针/引用对齐
+PointerAlignment: Left
+
 # include 自动排序
 SortIncludes: "true"
 IncludeBlocks: Regroup

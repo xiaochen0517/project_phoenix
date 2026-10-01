@@ -6,7 +6,8 @@
     "spdlog",
     "luajit",
     "sol2",
-    "catch2"
+    "catch2",
+    "nlohmann-json"
   ],
   "builtin-baseline": "58845ed63eb19aff55e896ea1f5d51f2a0df5b66"
 }

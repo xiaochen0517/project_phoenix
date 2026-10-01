@@ -31,6 +31,9 @@ find_package(sol2 CONFIG REQUIRED)
 # Catch2 单元测试框架 (vcpkg manifest 模式)。
 find_package(Catch2 CONFIG REQUIRED)
 
+# nlohmann/json (header-only, vcpkg manifest 模式), 供 config/ 模块解析 JSON。
+find_package(nlohmann_json CONFIG REQUIRED)
+
 # 启用 ctest (在 core/ 下经 add_test 注册测试目标)。
 enable_testing()
 
