@@ -2,19 +2,17 @@
 #include "script/lua_engine.h"
 
 #include <catch2/catch_test_macros.hpp>
-
-#include <spdlog/sinks/ostream_sink.h>
-#include <spdlog/spdlog.h>
-
 #include <cstdio>
 #include <fstream>
+#include <spdlog/sinks/ostream_sink.h>
+#include <spdlog/spdlog.h>
 #include <sstream>
 #include <string>
 
 namespace {
-    std::string lua_path(const char *name) {
-        return std::string(PROJECT_PHOENIX_LUA_DIR) + "/" + name;
-    }
+std::string lua_path(const char* name) {
+    return std::string(PROJECT_PHOENIX_LUA_DIR) + "/" + name;
+}
 } // namespace
 
 TEST_CASE("api.log.info is callable from Lua and outputs the message") {

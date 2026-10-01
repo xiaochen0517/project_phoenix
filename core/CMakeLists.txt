@@ -6,6 +6,7 @@ add_executable(project_phoenix
     log/app_log.cpp
     script/lua_engine.cpp
     script/api_registry.cpp
+    event/event_bus.cpp
     model/model_loader.cpp
 )
 
@@ -22,8 +23,10 @@ add_executable(project_phoenix_tests
     log/app_log.cpp
     script/lua_engine.cpp
     script/api_registry.cpp
+    event/event_bus.cpp
     tests/test_lua_engine.cpp
     tests/test_api_bindings.cpp
+    tests/test_event_bus.cpp
     tests/test_app_log.cpp
     tests/success_listener.cpp
 )

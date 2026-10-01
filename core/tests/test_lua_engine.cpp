@@ -1,15 +1,14 @@
 #include "script/lua_engine.h"
 
 #include <catch2/catch_test_macros.hpp>
-
 #include <cstdio>
 #include <fstream>
 #include <string>
 
 namespace {
-    std::string lua_path(const char *name) {
-        return std::string(PROJECT_PHOENIX_LUA_DIR) + "/" + name;
-    }
+std::string lua_path(const char* name) {
+    return std::string(PROJECT_PHOENIX_LUA_DIR) + "/" + name;
+}
 } // namespace
 
 TEST_CASE("loads a Lua file and calls a function returning a number") {
