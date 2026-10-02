@@ -36,8 +36,12 @@ class Document {
     ValidationResult validate(const std::vector<std::string>& required,
                               const std::vector<std::string>& optional = {}) const;
 
-    // 列出指定点分隔路径下对象的子键名; 节点不存在或非对象返回空列表。
+    // 列出指定点分隔路径下对象的子键名 (对象返回键名, 数组返回索引字符串 "0".."N-1");
+    // 节点不存在或非容器返回空列表。
     std::vector<std::string> keys(const std::string& path) const;
+
+    // 返回指定点分隔路径下容器 (对象/数组) 的元素个数; 节点不存在或非容器返回 -1。
+    std::int64_t size(const std::string& path) const;
 
   private:
     struct Impl;

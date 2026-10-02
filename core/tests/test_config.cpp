@@ -69,3 +69,27 @@ TEST_CASE("validate required and optional fields") {
     REQUIRE_FALSE(missing.ok());
     REQUIRE(missing.missing == std::vector<std::string>{"nonexistent"});
 }
+
+TEST_CASE("array access via size, numeric index and keys") {
+    const auto doc = config::load_file(config_path("test_array.json"));
+    REQUIRE(doc.has_value());
+
+    // size: 数组与对象元素个数; 非容器/缺失返回 -1。
+    REQUIRE(doc->size("items") == 3);
+    REQUIRE(doc->size("matrix") == 2);
+    REQUIRE(doc->size("defs") == 2);
+    REQUIRE(doc->size("missing") == -1);
+    REQUIRE(doc->size("items.0") == -1); // 叶子非容器
+
+    // 数字下标段索引数组元素。
+    REQUIRE(doc->get_string("items.0", "") == "a");
+    REQUIRE(doc->get_string("items.2", "") == "c");
+    REQUIRE(doc->get_string("items.3", "fallback") == "fallback"); // 越界返回默认值
+    REQUIRE(doc->get_int("matrix.1.0", 0) == 3);
+    REQUIRE(doc->get_int("matrix.1.1", 0) == 4);
+    REQUIRE(doc->get_int("defs.1.id", 0) == 2);
+    REQUIRE(doc->get_string("defs.0.name", "") == "x");
+
+    // keys: 数组返回索引字符串 "0".."N-1"。
+    REQUIRE(doc->keys("items") == std::vector<std::string>{"0", "1", "2"});
+}

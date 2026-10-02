@@ -1,0 +1,11 @@
+{
+  "name": "bad_unknown_tile",
+  "tile_size": 1.0,
+  "chunk_size": 16,
+  "tile_defs": [
+    { "id": 1, "name": "grass", "walkable": true, "height": 0.0, "color": [0.35, 0.60, 0.30], "texture": "" }
+  ],
+  "levels": [
+    { "id": "l0", "width": 1, "depth": 1, "tiles": [99], "walls": [] }
+  ]
+}

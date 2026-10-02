@@ -1,0 +1,31 @@
+{
+  "name": "test_world",
+  "tile_size": 1.0,
+  "chunk_size": 2,
+  "tile_defs": [
+    { "id": 1, "name": "grass", "walkable": true, "height": 0.0, "color": [0.35, 0.60, 0.30], "texture": "" },
+    { "id": 2, "name": "stone", "walkable": true, "height": 0.0, "color": [0.50, 0.50, 0.50], "texture": "" },
+    { "id": 3, "name": "wall", "walkable": false, "height": 1.0, "color": [0.45, 0.38, 0.32], "texture": "" },
+    { "id": 4, "name": "stairs_up", "walkable": true, "height": 0.0, "color": [0.85, 0.65, 0.25], "texture": "", "stairs": "up" },
+    { "id": 5, "name": "stairs_down", "walkable": true, "height": 0.0, "color": [0.85, 0.65, 0.25], "texture": "", "stairs": "down" }
+  ],
+  "levels": [
+    {
+      "id": "ground",
+      "width": 4,
+      "depth": 4,
+      "tiles": [2, 1, 1, 1, 1, 3, 1, 1, 1, 1, 4, 1, 1, 1, 1, 1],
+      "walls": [
+        { "x": 0, "z": 0, "side": "n" },
+        { "x": 2, "z": 1, "side": "e" }
+      ]
+    },
+    {
+      "id": "upper",
+      "width": 4,
+      "depth": 4,
+      "tiles": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 5, 1, 1, 1, 1, 1],
+      "walls": []
+    }
+  ]
+}

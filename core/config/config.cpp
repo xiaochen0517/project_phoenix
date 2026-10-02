@@ -26,19 +26,41 @@ std::vector<std::string> split_path(const std::string& path) {
     return parts;
 }
 
-// 沿点分隔路径查找节点; 中途遇到非对象或 key 缺失返回 nullptr。
+// 判断字符串是否全为数字 (用作数组下标段), 解析为索引。
+bool parse_index(const std::string& s, std::size_t& index) {
+    if (s.empty()) {
+        return false;
+    }
+    for (const char c : s) {
+        if (c < '0' || c > '9') {
+            return false;
+        }
+    }
+    index = static_cast<std::size_t>(std::stoull(s));
+    return true;
+}
+
+// 沿点分隔路径查找节点; 中途遇到非容器或 key/下标缺失返回 nullptr。
+// 对象按 key 匹配, 数组按「全数字段」作下标索引。
 const nlohmann::json* find_node(const nlohmann::json& root, const std::string& path) {
     const std::vector<std::string> parts = split_path(path);
     const nlohmann::json* current = &root;
     for (const std::string& part : parts) {
-        if (!current->is_object()) {
+        if (current->is_object()) {
+            const auto it = current->find(part);
+            if (it == current->end()) {
+                return nullptr;
+            }
+            current = &(*it);
+        } else if (current->is_array()) {
+            std::size_t index = 0;
+            if (!parse_index(part, index) || index >= current->size()) {
+                return nullptr;
+            }
+            current = &(*current)[index];
+        } else {
             return nullptr;
         }
-        const auto it = current->find(part);
-        if (it == current->end()) {
-            return nullptr;
-        }
-        current = &(*it);
     }
     return current;
 }
@@ -118,14 +140,30 @@ Document::ValidationResult Document::validate(const std::vector<std::string>& re
 
 std::vector<std::string> Document::keys(const std::string& path) const {
     const nlohmann::json* node = find_node(impl_->root, path);
-    if (node == nullptr || !node->is_object()) {
+    if (node == nullptr) {
         return {};
     }
     std::vector<std::string> result;
-    for (auto it = node->begin(); it != node->end(); ++it) {
-        result.push_back(it.key());
+    if (node->is_object()) {
+        for (auto it = node->begin(); it != node->end(); ++it) {
+            result.push_back(it.key());
+        }
+    } else if (node->is_array()) {
+        // 数组下标用计数器显式转换, 避免 it.key() (nlohmann 对数组迭代器会抛异常 207)。
+        result.reserve(node->size());
+        for (std::size_t i = 0; i < node->size(); ++i) {
+            result.push_back(std::to_string(i));
+        }
     }
     return result;
+}
+
+std::int64_t Document::size(const std::string& path) const {
+    const nlohmann::json* node = find_node(impl_->root, path);
+    if (node == nullptr || (!node->is_object() && !node->is_array())) {
+        return -1;
+    }
+    return static_cast<std::int64_t>(node->size());
 }
 
 // ---- load_file ----

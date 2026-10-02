@@ -13,6 +13,7 @@ add_executable(project_phoenix
     ecs/ecs.cpp
     camera/camera.cpp
     input/input.cpp
+    world/world.cpp
     model/model_loader.cpp
 )
 
@@ -35,6 +36,7 @@ add_executable(project_phoenix_tests
     ecs/ecs.cpp
     camera/camera.cpp
     input/input.cpp
+    world/world.cpp
     tests/test_lua_engine.cpp
     tests/test_api_bindings.cpp
     tests/test_event_bus.cpp
@@ -43,6 +45,7 @@ add_executable(project_phoenix_tests
     tests/test_camera.cpp
     tests/test_api_camera.cpp
     tests/test_input.cpp
+    tests/test_world.cpp
     tests/test_app_log.cpp
     tests/success_listener.cpp
 )
