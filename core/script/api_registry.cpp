@@ -2,6 +2,7 @@
 
 #include "camera/camera.h"
 #include "event/event_bus.h"
+#include "input/input.h"
 #include "log/app_log.h"
 #include "script/lua_engine.h"
 
@@ -62,6 +63,14 @@ event::Value to_event_value(const sol::object& obj) {
     default:
         return event::Value::nil();
     }
+}
+
+// 活动上下文绑定表指针; 无活动上下文返回 nullptr。
+input::BindingMap* active_bindings(input::Manager& manager) {
+    if (!manager.has_context(manager.active_context())) {
+        return nullptr;
+    }
+    return &manager.context(manager.active_context());
 }
 } // namespace
 
@@ -149,5 +158,86 @@ void register_camera(lua_State* L, camera::Manager& manager) {
     // 占位 (P0 不实现, P1 补齐): 固定返回 false, 保证调用不报错。
     cam["shake"] = [](sol::variadic_args) { return false; };
     cam["set_follow"] = [](sol::variadic_args) { return false; };
+}
+
+void register_input(lua_State* L, input::Manager& manager) {
+    sol::state_view lua(L);
+    sol::table api = lua["api"].get_or_create<sol::table>();
+    sol::table in = api["input"].get_or_create<sol::table>();
+
+    // bind(action, key, force?): 在活动上下文绑定, 冲突且未 force 返回 false。
+    in["bind"] = sol::overload(
+        [&manager](std::string action, std::string key_name) -> bool {
+            input::BindingMap* bindings = active_bindings(manager);
+            const input::Key key = input::key_from_name(key_name);
+            return bindings != nullptr && key != input::Key::Unknown &&
+                   bindings->bind(action, key) == input::BindResult::Ok;
+        },
+        [&manager](std::string action, std::string key_name, bool force) -> bool {
+            input::BindingMap* bindings = active_bindings(manager);
+            const input::Key key = input::key_from_name(key_name);
+            return bindings != nullptr && key != input::Key::Unknown &&
+                   bindings->bind(action, key, force) == input::BindResult::Ok;
+        });
+
+    // unbind(action): 解绑活动上下文中的动作。
+    in["unbind"] = [&manager](std::string action) -> bool {
+        input::BindingMap* bindings = active_bindings(manager);
+        return bindings != nullptr && bindings->unbind(action);
+    };
+
+    // query(action): 返回动作绑定的键名 (string), 未绑定返回 nil。
+    in["query"] = [&manager, L](std::string action) -> sol::object {
+        const std::optional<input::Key> key = manager.query(action);
+        if (!key.has_value()) {
+            return sol::nil;
+        }
+        sol::state_view state(L);
+        return sol::make_object(state, input::key_name(*key));
+    };
+
+    // actions(key): 返回该键绑定的动作名表 (string 数组, 1-based)。
+    in["actions"] = [&manager, L](std::string key_name) {
+        sol::state_view state(L);
+        sol::table table = state.create_table();
+        const input::Key key = input::key_from_name(key_name);
+        if (key == input::Key::Unknown) {
+            return table;
+        }
+        input::BindingMap* bindings = active_bindings(manager);
+        if (bindings == nullptr) {
+            return table;
+        }
+        const std::vector<std::string> actions = bindings->actions_for(key);
+        for (std::size_t i = 0; i < actions.size(); ++i) {
+            table[i + 1] = actions[i];
+        }
+        return table;
+    };
+
+    // state(action): 返回动作当前状态字符串 ("idle"/"pressed"/"held"/"released")。
+    in["state"] = [&manager](std::string action) -> std::string {
+        switch (manager.state(action)) {
+        case input::ActionState::Pressed:
+            return "pressed";
+        case input::ActionState::Held:
+            return "held";
+        case input::ActionState::Released:
+            return "released";
+        case input::ActionState::Idle:
+        default:
+            return "idle";
+        }
+    };
+
+    // key(name): 键名 → key code (辅助), 未知返回 nil。
+    in["key"] = [L](std::string name) -> sol::object {
+        const input::Key key = input::key_from_name(name);
+        if (key == input::Key::Unknown) {
+            return sol::nil;
+        }
+        sol::state_view state(L);
+        return sol::make_object(state, static_cast<double>(key));
+    };
 }
 } // namespace api

@@ -14,6 +14,10 @@ namespace camera {
 class Manager;
 }
 
+namespace input {
+class Manager;
+}
+
 namespace api {
 // 汇总注册所有 api.* 模块, 把 C++ 能力暴露给 Lua 侧 (api.<module>.<func> 命名空间)。
 void register_all(lua_engine::Engine& engine);
@@ -23,4 +27,7 @@ void register_event(lua_State* L, event::Bus& bus);
 
 // 注册 api.camera.* (相机绑定)。相机管理器为有状态对象, 需外部注入 manager 实例。
 void register_camera(lua_State* L, camera::Manager& manager);
+
+// 注册 api.input.* (输入绑定)。输入管理器为有状态对象, 需外部注入 manager 实例。
+void register_input(lua_State* L, input::Manager& manager);
 } // namespace api

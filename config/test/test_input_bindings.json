@@ -1,0 +1,17 @@
+{
+  "default_context": "main_game",
+  "contexts": {
+    "main_game": {
+      "move_up": "W",
+      "move_down": "S",
+      "move_left": "A",
+      "move_right": "D"
+    },
+    "menu": {
+      "move_up": "UP",
+      "move_down": "DOWN",
+      "confirm": "ENTER",
+      "bad_key": "NOT_A_REAL_KEY"
+    }
+  }
+}

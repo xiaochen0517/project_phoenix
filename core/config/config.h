@@ -36,6 +36,9 @@ class Document {
     ValidationResult validate(const std::vector<std::string>& required,
                               const std::vector<std::string>& optional = {}) const;
 
+    // 列出指定点分隔路径下对象的子键名; 节点不存在或非对象返回空列表。
+    std::vector<std::string> keys(const std::string& path) const;
+
   private:
     struct Impl;
     std::unique_ptr<Impl> impl_;

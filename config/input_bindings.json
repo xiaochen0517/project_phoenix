@@ -1,0 +1,11 @@
+{
+  "default_context": "main_game",
+  "contexts": {
+    "main_game": {
+      "move_up": "W",
+      "move_down": "S",
+      "move_left": "A",
+      "move_right": "D"
+    }
+  }
+}

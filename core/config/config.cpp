@@ -116,6 +116,18 @@ Document::ValidationResult Document::validate(const std::vector<std::string>& re
     return result;
 }
 
+std::vector<std::string> Document::keys(const std::string& path) const {
+    const nlohmann::json* node = find_node(impl_->root, path);
+    if (node == nullptr || !node->is_object()) {
+        return {};
+    }
+    std::vector<std::string> result;
+    for (auto it = node->begin(); it != node->end(); ++it) {
+        result.push_back(it.key());
+    }
+    return result;
+}
+
 // ---- load_file ----
 std::optional<Document> load_file(const std::string& path) {
     std::ifstream file(path);
