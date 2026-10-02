@@ -1,7 +1,9 @@
 add_executable(project_phoenix
     main.cpp
     app/app.cpp
-    app/model_viewer_game.cpp
+    app/scene_host.cpp
+    scene/debug/model_viewer_game.cpp
+    scene/main_game/demo_scene.cpp
     util/asset_path.cpp
     log/app_log.cpp
     script/lua_engine.cpp

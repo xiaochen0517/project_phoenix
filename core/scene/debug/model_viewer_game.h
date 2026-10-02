@@ -6,10 +6,10 @@
 #include "raylib.h"
 #include "script/lua_engine.h"
 
-namespace app {
-// P0 阶段的运行载体: 迁移自原 main.cpp 的模型查看器 (模型 / 相机 / ImGui 面板)。
+namespace scene::debug {
+// P0 阶段的运行载体: 迁移自原 app/model_viewer_game.cpp 的模型查看器 (模型 / 相机 / ImGui 面板)。
 // 作为固定 tick 框架的验证载体, 不新增业务逻辑。
-class ModelViewerGame : public Game {
+class ModelViewerGame : public app::Game {
   public:
     bool init() override;
 
@@ -17,11 +17,11 @@ class ModelViewerGame : public Game {
 
     void render(float alpha) override;
 
+    void renderUi() override;
+
     void shutdown() override;
 
   private:
-    void renderUi();
-
     Camera3D camera_{};
     bool orbitalControl_ = false;
     bool manualControl_ = false;
@@ -41,4 +41,4 @@ class ModelViewerGame : public Game {
     char modelPath_[512]{};
     char texturePath_[512]{};
 };
-} // namespace app
+} // namespace scene::debug

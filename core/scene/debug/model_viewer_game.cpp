@@ -1,4 +1,4 @@
-#include "app/model_viewer_game.h"
+#include "scene/debug/model_viewer_game.h"
 
 #include "camera/camera_raylib.h"
 #include "imgui.h"
@@ -15,7 +15,7 @@
 #include <vector>
 
 namespace {
-constexpr const char* kDefaultModelPath = "assets/models/body/MaleBody.glb";
+constexpr const char* kDefaultModelPath = "assets/models/body/Bob_Idle.glb";
 constexpr const char* kDefaultTexturePath = "assets/texture/body/MaleBody01.png";
 
 constexpr Color kBackgroundColor{32, 36, 40, 255};
@@ -112,7 +112,7 @@ void updateManualCamera(Camera3D& camera, float moveSpeed, float rotateSpeed, bo
 }
 } // namespace
 
-namespace app {
+namespace scene::debug {
 bool ModelViewerGame::init() {
     // 相机默认值
     resetCamera(camera_, {8.0f, 6.0f, 10.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, 45.0f, CAMERA_PERSPECTIVE);
@@ -179,9 +179,7 @@ void ModelViewerGame::render(float alpha) {
         EnableCursor();
     }
 
-    BeginDrawing();
     ClearBackground(kBackgroundColor);
-
     BeginMode3D(camera_);
     DrawGrid(20, 1.0f);
     scene_.draw(transform_, drawWires_);
@@ -189,12 +187,6 @@ void ModelViewerGame::render(float alpha) {
         scene_.drawBounds(transform_);
     }
     EndMode3D();
-
-    rlImGuiBegin();
-    renderUi();
-    rlImGuiEnd();
-
-    EndDrawing();
 }
 
 void ModelViewerGame::shutdown() {
@@ -387,4 +379,4 @@ void ModelViewerGame::renderUi() {
     }
     ImGui::End();
 }
-} // namespace app
+} // namespace scene::debug

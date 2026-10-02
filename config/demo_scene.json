@@ -1,0 +1,8 @@
+{
+  "scene": "demo",
+  "camera": {
+    "default":  { "distance": 18, "fov": 45 },
+    "overview": { "distance": 32, "fov": 35 }
+  },
+  "player": { "x": 0, "y": 0, "z": 0 }
+}

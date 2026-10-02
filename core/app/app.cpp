@@ -14,7 +14,7 @@ namespace {
 // 2K (QHD) 默认窗口
 constexpr int kScreenWidth = 2560;
 constexpr int kScreenHeight = 1440;
-constexpr const char* kWindowTitle = "Project Phoenix - 模型查看器 (2K)";
+constexpr const char* kWindowTitle = "Project Phoenix (2K)";
 
 // 固定逻辑步长 (30Hz) 与帧时间上限 (防止卡顿后累加器死亡螺旋)。
 constexpr double kFixedDt = 1.0 / 30.0;
