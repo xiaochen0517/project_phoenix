@@ -1,9 +1,9 @@
 #include "scene/debug/model_viewer_game.h"
 
 #include "camera/camera_raylib.h"
+#include "camera/free_fly.h"
 #include "imgui.h"
 #include "log/app_log.h"
-#include "rcamera.h"
 #include "rlImGui.h"
 #include "script/api_registry.h"
 #include "util/asset_path.h"
@@ -57,58 +57,6 @@ void centerModelOnGrid(model_loader::Transform& transform, const model_loader::M
     transform.position[0] = -center[0];
     transform.position[1] = -(center[1] - size[1] * 0.5f);
     transform.position[2] = -center[2];
-}
-
-// 编辑器风格手动飞行相机: WASD 前后左右 (以视角朝向为准), Space/Ctrl 升降, 右键按住捕获鼠标并旋转视角。
-// 移动量按帧时间缩放 (帧率无关); 旋转量按鼠标像素增量计算。移动用 WantCaptureKeyboard、旋转用 WantCaptureMouse
-// 分别门控。 注意: raylib 的 DisableCursor/EnableCursor 内部会把鼠标重置到屏幕中心, 必须只在捕获状态切换时各调用一次,
-// 否则每帧重置鼠标会导致光标被吸附到中心且 GetMouseDelta 失效。
-void updateManualCamera(Camera3D& camera, float moveSpeed, float rotateSpeed, bool& capturing) {
-    ImGuiIO& io = ImGui::GetIO();
-    const float dist = moveSpeed * GetFrameTime();
-
-    if (!io.WantCaptureKeyboard) {
-        if (IsKeyDown(KEY_W)) {
-            CameraMoveForward(&camera, dist, false);
-        }
-        if (IsKeyDown(KEY_S)) {
-            CameraMoveForward(&camera, -dist, false);
-        }
-        if (IsKeyDown(KEY_D)) {
-            CameraMoveRight(&camera, dist, false);
-        }
-        if (IsKeyDown(KEY_A)) {
-            CameraMoveRight(&camera, -dist, false);
-        }
-        if (IsKeyDown(KEY_SPACE)) {
-            CameraMoveUp(&camera, dist);
-        }
-        if (IsKeyDown(KEY_LEFT_CONTROL)) {
-            CameraMoveUp(&camera, -dist);
-        }
-    }
-
-    const bool wantCapture = !io.WantCaptureMouse && IsMouseButtonDown(MOUSE_BUTTON_RIGHT);
-    bool applyRotation = wantCapture;
-
-    // rlImGui 每帧会按 ImGui 光标形状调用 ShowCursor/HideCursor, 与捕获逻辑冲突;
-    // 捕获期间置位 NoMouseCursorChange 独占光标控制, 释放时恢复。
-    if (wantCapture && !capturing) {
-        capturing = true;
-        DisableCursor();
-        io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
-        applyRotation = false; // DisableCursor 会把鼠标重置到中心, 捕获首帧的 delta 是跳变, 跳过
-    } else if (!wantCapture && capturing) {
-        capturing = false;
-        io.ConfigFlags &= ~ImGuiConfigFlags_NoMouseCursorChange;
-        EnableCursor();
-    }
-
-    if (applyRotation) {
-        const Vector2 delta = GetMouseDelta();
-        CameraYaw(&camera, -delta.x * rotateSpeed, false);
-        CameraPitch(&camera, -delta.y * rotateSpeed, true, false, false);
-    }
 }
 } // namespace
 
@@ -171,7 +119,7 @@ void ModelViewerGame::render(float alpha) {
 
     // 手动飞行相机 (WASD 移动 / 右键旋转)
     if (manualControl_) {
-        updateManualCamera(camera_, cameraMoveSpeed_, cameraRotateSpeed_, manualCapturing_);
+        camera::update_free_fly(camera_, cameraMoveSpeed_, cameraRotateSpeed_, manualCapturing_);
     } else if (manualCapturing_) {
         // 关闭手动操作时若仍在捕获, 恢复光标 (防御性)
         manualCapturing_ = false;

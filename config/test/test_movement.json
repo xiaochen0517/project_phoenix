@@ -1,0 +1,25 @@
+{
+  "name": "test_movement",
+  "tile_size": 1.0,
+  "chunk_size": 2,
+  "level_height": 1.0,
+  "tile_defs": [
+    { "id": 1, "name": "grass", "walkable": true, "height": 0.0, "color": [0.35, 0.60, 0.30], "texture": "" },
+    { "id": 2, "name": "raised", "walkable": true, "height": 0.5, "color": [0.50, 0.50, 0.50], "texture": "" }
+  ],
+  "levels": [
+    {
+      "z": 0,
+      "id": "ground",
+      "width": 2,
+      "depth": 2,
+      "tiles": [
+        { "x": 0, "y": 0, "id": 1 },
+        { "x": 1, "y": 0, "id": 2 },
+        { "x": 0, "y": 1, "id": 1 },
+        { "x": 1, "y": 1, "id": 1 }
+      ],
+      "walls": []
+    }
+  ]
+}

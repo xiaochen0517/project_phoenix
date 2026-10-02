@@ -105,12 +105,12 @@ TEST_CASE("action_to_dir returns normalized direction vectors") {
     const auto up = input::action_to_dir("move_up");
     REQUIRE(up.has_value());
     REQUIRE(up->x == Catch::Approx(-k));
-    REQUIRE(up->z == Catch::Approx(-k));
+    REQUIRE(up->y == Catch::Approx(-k));
 
     const auto right = input::action_to_dir("move_right");
     REQUIRE(right.has_value());
     REQUIRE(right->x == Catch::Approx(k));
-    REQUIRE(right->z == Catch::Approx(-k));
+    REQUIRE(right->y == Catch::Approx(-k));
 
     REQUIRE_FALSE(input::action_to_dir("jump").has_value());
 }

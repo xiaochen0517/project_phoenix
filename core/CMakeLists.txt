@@ -4,6 +4,7 @@ add_executable(project_phoenix
     app/scene_host.cpp
     scene/debug/model_viewer_game.cpp
     scene/main_game/demo_scene.cpp
+    scene/main_game/world_scene.cpp
     util/asset_path.cpp
     log/app_log.cpp
     script/lua_engine.cpp
@@ -14,6 +15,8 @@ add_executable(project_phoenix
     camera/camera.cpp
     input/input.cpp
     world/world.cpp
+    movement/movement.cpp
+    visibility/visibility.cpp
     model/model_loader.cpp
 )
 
@@ -37,6 +40,8 @@ add_executable(project_phoenix_tests
     camera/camera.cpp
     input/input.cpp
     world/world.cpp
+    movement/movement.cpp
+    visibility/visibility.cpp
     tests/test_lua_engine.cpp
     tests/test_api_bindings.cpp
     tests/test_event_bus.cpp
@@ -46,6 +51,8 @@ add_executable(project_phoenix_tests
     tests/test_api_camera.cpp
     tests/test_input.cpp
     tests/test_world.cpp
+    tests/test_movement.cpp
+    tests/test_visibility.cpp
     tests/test_app_log.cpp
     tests/success_listener.cpp
 )

@@ -7,6 +7,6 @@
     { "id": 1, "name": "dup", "walkable": true, "height": 0.0, "color": [0.5, 0.5, 0.5], "texture": "" }
   ],
   "levels": [
-    { "id": "l0", "width": 1, "depth": 1, "tiles": [1], "walls": [] }
+    { "id": "l0", "width": 1, "depth": 1, "tiles": [ { "x": 0, "y": 0, "id": 1 } ], "walls": [] }
   ]
 }

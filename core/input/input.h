@@ -92,10 +92,10 @@ enum class BindResult {
     Conflict
 };
 
-// 水平面方向向量 (x/z)。
+// 水平面方向向量 (x/y)。
 struct Vec2 {
     float x = 0.0f;
-    float z = 0.0f;
+    float y = 0.0f;
 };
 
 // 键名 ↔ Key 双向转换 (纯函数)。未知名返回 Key::Unknown, 未知 Key 返回 "UNKNOWN"。
@@ -106,7 +106,7 @@ std::string key_name(Key key);
 // 全部可识别键 (采样枚举用), 按枚举值升序。
 const std::vector<Key>& all_keys();
 
-// 动作 → 移动方向 (纯函数, 按 roadmap §1.1: 北=-z, 东=+x, W=西北)。
+// 动作 → 移动方向 (纯函数, 按 §1.1: 北=-y, 东=+x, W=西北)。
 // move_up/down/left/right 返回归一化向量, 其余返回 nullopt。
 std::optional<Vec2> action_to_dir(const std::string& action);
 

@@ -6,6 +6,6 @@
     { "id": 1, "name": "grass", "walkable": true, "height": 0.0, "color": [0.35, 0.60, 0.30], "texture": "" }
   ],
   "levels": [
-    { "id": "l0", "width": 1, "depth": 1, "tiles": [99], "walls": [] }
+    { "id": "l0", "width": 1, "depth": 1, "tiles": [ { "x": 0, "y": 0, "id": 99 } ], "walls": [] }
   ]
 }

@@ -1,9 +1,9 @@
 {
-  "name": "test_world",
+  "name": "test_world_bad_scale",
   "tile_size": 1.0,
   "chunk_size": 2,
   "level_height": 1.0,
-  "vertical_scale": 3.0,
+  "vertical_scale": 0.0,
   "tile_defs": [
     { "id": 1, "name": "grass", "walkable": true, "height": 0.0, "color": [0.35, 0.60, 0.30], "texture": "" },
     { "id": 2, "name": "stone", "walkable": true, "height": 0.0, "color": [0.50, 0.50, 0.50], "texture": "" },

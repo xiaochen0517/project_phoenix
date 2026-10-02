@@ -8,14 +8,14 @@
 
 namespace world {
 namespace {
-// 组合键: cell.x(21bit) | cell.z(21bit) | side(2bit)。坐标范围 ±1048576 内唯一。
+// 组合键: cell.x(21bit) | cell.y(21bit) | side(2bit)。坐标范围 ±1048576 内唯一。
 constexpr std::int64_t kCoordMask = 0x1FFFFF;
 
-std::int64_t wall_key(std::int32_t x, std::int32_t z, Side side) {
+std::int64_t wall_key(std::int32_t x, std::int32_t y, Side side) {
     const std::int64_t kx = static_cast<std::int64_t>(x) & kCoordMask;
-    const std::int64_t kz = static_cast<std::int64_t>(z) & kCoordMask;
+    const std::int64_t ky = static_cast<std::int64_t>(y) & kCoordMask;
     const std::int64_t ks = static_cast<std::int64_t>(side);
-    return kx | (kz << 21) | (ks << 42);
+    return kx | (ky << 21) | (ks << 42);
 }
 
 Side opposite(Side side) {
@@ -35,25 +35,15 @@ Side opposite(Side side) {
 TileCoord neighbor(const TileCoord& tile, Side side) {
     switch (side) {
     case Side::North:
-        return {tile.x, tile.z - 1};
+        return {tile.x, tile.y - 1};
     case Side::South:
-        return {tile.x, tile.z + 1};
+        return {tile.x, tile.y + 1};
     case Side::East:
-        return {tile.x + 1, tile.z};
+        return {tile.x + 1, tile.y};
     case Side::West:
-        return {tile.x - 1, tile.z};
+        return {tile.x - 1, tile.y};
     }
     return tile;
-}
-
-Stairs stairs_from_string(const std::string& s) {
-    if (s == "up") {
-        return Stairs::Up;
-    }
-    if (s == "down") {
-        return Stairs::Down;
-    }
-    return Stairs::None;
 }
 
 std::int32_t floor_div(std::int32_t v, std::int32_t d) {
@@ -63,29 +53,29 @@ std::int32_t floor_div(std::int32_t v, std::int32_t d) {
 }
 } // namespace
 
-TileCoord world_to_tile(float wx, float wz, float tile_size) {
+TileCoord world_to_tile(float wx, float wy, float tile_size) {
     return {
         static_cast<std::int32_t>(std::floor(wx / tile_size)),
-        static_cast<std::int32_t>(std::floor(wz / tile_size)),
+        static_cast<std::int32_t>(std::floor(wy / tile_size)),
     };
 }
 
-void tile_to_world(const TileCoord& tile, float tile_size, float& wx, float& wz) {
+void tile_to_world(const TileCoord& tile, float tile_size, float& wx, float& wy) {
     wx = (static_cast<float>(tile.x) + 0.5f) * tile_size;
-    wz = (static_cast<float>(tile.z) + 0.5f) * tile_size;
+    wy = (static_cast<float>(tile.y) + 0.5f) * tile_size;
 }
 
 ChunkCoord tile_to_chunk(const TileCoord& tile, std::int32_t chunk_size) {
     return {
         floor_div(tile.x, chunk_size),
-        floor_div(tile.z, chunk_size),
+        floor_div(tile.y, chunk_size),
     };
 }
 
 TileCoord chunk_to_tile(const ChunkCoord& chunk, std::int32_t chunk_size) {
     return {
         chunk.x * chunk_size,
-        chunk.z * chunk_size,
+        chunk.y * chunk_size,
     };
 }
 
@@ -119,24 +109,23 @@ std::string side_to_string(Side side) {
     return "n";
 }
 
-const Level* World::level_or_null(std::int32_t level) const {
-    if (level < 0 || level >= static_cast<std::int32_t>(levels_.size())) {
-        return nullptr;
-    }
-    return &levels_[static_cast<std::size_t>(level)];
+std::int64_t tile_key(std::int32_t x, std::int32_t y) {
+    return (static_cast<std::int64_t>(x) << 32) | (static_cast<std::uint32_t>(y));
 }
 
-bool World::in_bounds(const Level& lvl, const TileCoord& tile) const {
-    return tile.x >= 0 && tile.x < lvl.width && tile.z >= 0 && tile.z < lvl.depth;
+void tile_key_decode(std::int64_t key, std::int32_t& x, std::int32_t& y) {
+    x = static_cast<std::int32_t>(key >> 32);
+    y = static_cast<std::int32_t>(static_cast<std::uint32_t>(key));
+}
+
+const Level* World::level_or_null(std::int32_t z) const {
+    const auto it = levels_.find(z);
+    return it != levels_.end() ? &it->second : nullptr;
 }
 
 std::int32_t World::tile_id_at(const Level& lvl, const TileCoord& tile) const {
-    if (!in_bounds(lvl, tile)) {
-        return 0;
-    }
-    const std::size_t i =
-        static_cast<std::size_t>(tile.z) * static_cast<std::size_t>(lvl.width) + static_cast<std::size_t>(tile.x);
-    return lvl.tiles[i];
+    const auto it = lvl.tiles.find(tile_key(tile.x, tile.y));
+    return it != lvl.tiles.end() ? it->second : 0; // 未声明 = 空 (void) = 0
 }
 
 std::optional<World> World::load(const config::Document& doc) {
@@ -150,6 +139,16 @@ std::optional<World> World::load(const config::Document& doc) {
     world.chunk_size_ = static_cast<std::int32_t>(doc.get_int("chunk_size", 16));
     if (world.chunk_size_ <= 0) {
         app_log::error("world: invalid chunk_size (must be > 0)");
+        return std::nullopt;
+    }
+    world.level_height_ = static_cast<float>(doc.get_double("level_height", 1.0));
+    if (world.level_height_ <= 0.0f) {
+        app_log::error("world: invalid level_height (must be > 0)");
+        return std::nullopt;
+    }
+    world.vertical_scale_ = static_cast<float>(doc.get_double("vertical_scale", 1.0));
+    if (world.vertical_scale_ <= 0.0f) {
+        app_log::error("world: invalid vertical_scale (must be > 0)");
         return std::nullopt;
     }
 
@@ -179,11 +178,10 @@ std::optional<World> World::load(const config::Document& doc) {
         def.g = static_cast<float>(doc.get_double(base + ".color.1", 0.5));
         def.b = static_cast<float>(doc.get_double(base + ".color.2", 0.5));
         def.texture = doc.get_string(base + ".texture", "");
-        def.stairs = stairs_from_string(doc.get_string(base + ".stairs", ""));
         world.tile_defs_.emplace(id, std::move(def));
     }
 
-    // 层级。
+    // 层级 (按 z)。
     const std::int64_t level_count = doc.size("levels");
     if (level_count <= 0) {
         app_log::error("world: missing or empty 'levels'");
@@ -196,8 +194,9 @@ std::optional<World> World::load(const config::Document& doc) {
             app_log::error("world: levels[" + std::to_string(li) + "] missing 'id'");
             return std::nullopt;
         }
-        if (world.level_index_.count(id) > 0) {
-            app_log::error("world: duplicate level id '" + id + "'");
+        const std::int32_t z = static_cast<std::int32_t>(doc.get_int(base + ".z", 0));
+        if (world.levels_.count(z) > 0 || world.level_index_.count(id) > 0) {
+            app_log::error("world: duplicate level z " + std::to_string(z) + " or id '" + id + "'");
             return std::nullopt;
         }
 
@@ -205,28 +204,34 @@ std::optional<World> World::load(const config::Document& doc) {
         lvl.id = id;
         lvl.width = static_cast<std::int32_t>(doc.get_int(base + ".width", 0));
         lvl.depth = static_cast<std::int32_t>(doc.get_int(base + ".depth", 0));
-        if (lvl.width <= 0 || lvl.depth <= 0) {
-            app_log::error("world: level '" + id + "' has invalid width/depth");
-            return std::nullopt;
-        }
 
-        // tiles。
+        // tiles (稀疏: 仅非空 tile)。
         const std::int64_t tile_count = doc.size(base + ".tiles");
-        if (tile_count != static_cast<std::int64_t>(lvl.width) * lvl.depth) {
-            app_log::error("world: level '" + id + "' tiles size mismatch (expected " +
-                           std::to_string(static_cast<std::int64_t>(lvl.width) * lvl.depth) + ", got " +
-                           std::to_string(tile_count) + ")");
+        if (tile_count < 0) {
+            app_log::error("world: level '" + id + "' has invalid 'tiles'");
             return std::nullopt;
         }
         lvl.tiles.reserve(static_cast<std::size_t>(tile_count));
         for (std::int64_t ti = 0; ti < tile_count; ++ti) {
-            const std::int32_t tile_id =
-                static_cast<std::int32_t>(doc.get_int(base + ".tiles." + std::to_string(ti), 0));
+            const std::string tbase = base + ".tiles." + std::to_string(ti);
+            const std::int32_t x = static_cast<std::int32_t>(doc.get_int(tbase + ".x", 0));
+            const std::int32_t y = static_cast<std::int32_t>(doc.get_int(tbase + ".y", 0));
+            const std::int32_t tile_id = static_cast<std::int32_t>(doc.get_int(tbase + ".id", 0));
             if (world.tile_defs_.count(tile_id) == 0) {
                 app_log::error("world: level '" + id + "' references unknown tile id " + std::to_string(tile_id));
                 return std::nullopt;
             }
-            lvl.tiles.push_back(tile_id);
+            const std::int64_t key = tile_key(x, y);
+            if (lvl.tiles.count(key) > 0) {
+                app_log::error("world: level '" + id + "' has duplicate tile at (" + std::to_string(x) + "," +
+                               std::to_string(y) + ")");
+                return std::nullopt;
+            }
+            lvl.tiles.emplace(key, tile_id);
+            const bool interior = doc.get_bool(tbase + ".interior", false);
+            if (interior) {
+                lvl.interior_tiles.insert(key);
+            }
         }
 
         // walls。
@@ -238,19 +243,19 @@ std::optional<World> World::load(const config::Document& doc) {
         for (std::int64_t wi = 0; wi < wall_count; ++wi) {
             const std::string wbase = base + ".walls." + std::to_string(wi);
             const std::int32_t x = static_cast<std::int32_t>(doc.get_int(wbase + ".x", 0));
-            const std::int32_t z = static_cast<std::int32_t>(doc.get_int(wbase + ".z", 0));
+            const std::int32_t y = static_cast<std::int32_t>(doc.get_int(wbase + ".y", 0));
             const std::optional<Side> side = side_from_string(doc.get_string(wbase + ".side", ""));
             if (!side.has_value()) {
                 app_log::error("world: level '" + id + "' has invalid wall side at index " + std::to_string(wi));
                 return std::nullopt;
             }
-            const Wall wall{TileCoord{x, z}, *side};
+            const Wall wall{TileCoord{x, y}, *side};
             lvl.walls.push_back(wall);
-            lvl.wall_set.insert(wall_key(x, z, *side));
+            lvl.wall_set.insert(wall_key(x, y, *side));
         }
 
-        world.level_index_.emplace(id, static_cast<std::int32_t>(li));
-        world.levels_.push_back(std::move(lvl));
+        world.level_index_.emplace(id, z);
+        world.levels_.emplace(z, std::move(lvl));
     }
 
     return world;
@@ -265,8 +270,8 @@ std::int32_t World::level_count() const {
     return static_cast<std::int32_t>(levels_.size());
 }
 
-const Level* World::level(std::int32_t index) const {
-    return level_or_null(index);
+const Level* World::level(std::int32_t z) const {
+    return level_or_null(z);
 }
 
 const Level* World::level(const std::string& id) const {
@@ -277,26 +282,43 @@ const Level* World::level(const std::string& id) const {
     return level_or_null(it->second);
 }
 
-bool World::is_walkable(std::int32_t level, const TileCoord& tile) const {
-    const TileDef* def = tile_def_at(level, tile);
+float World::level_height() const {
+    return level_height_;
+}
+
+float World::vertical_scale() const {
+    return vertical_scale_;
+}
+
+std::vector<std::int32_t> World::level_zs() const {
+    std::vector<std::int32_t> zs;
+    zs.reserve(levels_.size());
+    for (const auto& entry : levels_) {
+        zs.push_back(entry.first);
+    }
+    return zs;
+}
+
+bool World::is_walkable(std::int32_t z, const TileCoord& tile) const {
+    const TileDef* def = tile_def_at(z, tile);
     return def != nullptr && def->walkable;
 }
 
-bool World::has_wall(std::int32_t level, const TileCoord& tile, Side side) const {
-    const Level* lvl = level_or_null(level);
+bool World::has_wall(std::int32_t z, const TileCoord& tile, Side side) const {
+    const Level* lvl = level_or_null(z);
     if (lvl == nullptr) {
         return false;
     }
     // 对称查询: 本格该侧, 或相邻格对侧, 任一命中即为有墙。
-    if (lvl->wall_set.count(wall_key(tile.x, tile.z, side)) > 0) {
+    if (lvl->wall_set.count(wall_key(tile.x, tile.y, side)) > 0) {
         return true;
     }
     const TileCoord adj = neighbor(tile, side);
-    return lvl->wall_set.count(wall_key(adj.x, adj.z, opposite(side))) > 0;
+    return lvl->wall_set.count(wall_key(adj.x, adj.y, opposite(side))) > 0;
 }
 
-const TileDef* World::tile_def_at(std::int32_t level, const TileCoord& tile) const {
-    const Level* lvl = level_or_null(level);
+const TileDef* World::tile_def_at(std::int32_t z, const TileCoord& tile) const {
+    const Level* lvl = level_or_null(z);
     if (lvl == nullptr) {
         return nullptr;
     }
@@ -307,9 +329,12 @@ const TileDef* World::tile_def_at(std::int32_t level, const TileCoord& tile) con
     return tile_def(id);
 }
 
-Stairs World::stairs_at(std::int32_t level, const TileCoord& tile) const {
-    const TileDef* def = tile_def_at(level, tile);
-    return def != nullptr ? def->stairs : Stairs::None;
+bool World::is_interior(std::int32_t z, const TileCoord& tile) const {
+    const Level* lvl = level_or_null(z);
+    if (lvl == nullptr) {
+        return false;
+    }
+    return lvl->interior_tiles.count(tile_key(tile.x, tile.y)) > 0;
 }
 
 float World::tile_size() const {
@@ -320,13 +345,13 @@ std::int32_t World::chunk_size() const {
     return chunk_size_;
 }
 
-std::int32_t World::width(std::int32_t level) const {
-    const Level* lvl = level_or_null(level);
+std::int32_t World::width(std::int32_t z) const {
+    const Level* lvl = level_or_null(z);
     return lvl != nullptr ? lvl->width : 0;
 }
 
-std::int32_t World::depth(std::int32_t level) const {
-    const Level* lvl = level_or_null(level);
+std::int32_t World::depth(std::int32_t z) const {
+    const Level* lvl = level_or_null(z);
     return lvl != nullptr ? lvl->depth : 0;
 }
 } // namespace world
