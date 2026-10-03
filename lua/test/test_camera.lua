@@ -31,3 +31,27 @@ end
 function shake_placeholder()
     return api.camera.shake(1, 2, 3)
 end
+
+function set_type_ortho()
+    return api.camera.set_type("isometric_ortho")
+end
+
+function set_type_invalid()
+    return api.camera.set_type("perspective")
+end
+
+function get_type_str()
+    return api.camera.get_type()
+end
+
+function set_follow_player()
+    return api.camera.set_follow(7, 0.25)
+end
+
+function set_follow_bad_smoothing()
+    return api.camera.set_follow(7, 0)
+end
+
+function clear_follow_player()
+    return api.camera.clear_follow()
+end

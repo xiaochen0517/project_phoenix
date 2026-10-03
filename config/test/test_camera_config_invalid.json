@@ -1,0 +1,6 @@
+{
+  "active": "world",
+  "cameras": [
+    { "name": "world", "type": "perspective", "distance": 30 }
+  ]
+}

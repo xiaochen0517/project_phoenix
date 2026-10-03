@@ -1,0 +1,19 @@
+{
+  "active": "world",
+  "cameras": [
+    {
+      "name": "world",
+      "type": "isometric",
+      "distance": 18,
+      "fovy": 45,
+      "follow": { "smoothing": 0.15 }
+    },
+    {
+      "name": "world_ortho",
+      "type": "isometric_ortho",
+      "distance": 18,
+      "fovy": 18,
+      "follow": { "smoothing": 0.15 }
+    }
+  ]
+}

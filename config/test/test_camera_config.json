@@ -1,0 +1,18 @@
+{
+  "active": "main",
+  "cameras": [
+    {
+      "name": "main",
+      "type": "isometric",
+      "distance": 15,
+      "fovy": 45
+    },
+    {
+      "name": "top_ortho",
+      "type": "isometric_ortho",
+      "distance": 40,
+      "fovy": 25,
+      "follow": { "smoothing": 0.25 }
+    }
+  ]
+}

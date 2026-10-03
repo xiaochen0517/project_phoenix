@@ -1,5 +1,6 @@
 #include "scene/main_game/world_scene.h"
 
+#include "camera/camera_config.h"
 #include "camera/camera_raylib.h"
 #include "camera/free_fly.h"
 #include "config/config.h"
@@ -125,14 +126,30 @@ bool WorldScene::init() {
         playerModel_.setPlaying(true);
     }
 
-    // 5. isometric 相机, 目标跟随玩家。
-    camera::Params params;
-    params.distance = 30.0f;
-    params.target[0] = kPlayerSpawnX;
-    params.target[1] = 0.0f;
-    params.target[2] = kPlayerSpawnY;
-    camera_.create("world", camera::Type::Isometric, params);
-    camera_.set_active("world");
+    // 5. 相机: 从 config/camera.json 加载配置 (两类 isometric + 跟随平滑), 失败兜底硬编码。
+    const auto camera_doc = config::load_file(asset_path::resolve("config/camera.json"));
+    const std::optional<camera::Config> camera_config = camera_doc ? camera::load_config(*camera_doc) : std::nullopt;
+    if (camera_config && !camera_config->cameras.empty()) {
+        for (const camera::CameraEntry& entry : camera_config->cameras) {
+            const camera::Id cam_id = camera_.create(entry.name, entry.params);
+            if (entry.follow_enabled && cam_id != camera::kInvalidId) {
+                camera_.set_follow(cam_id, static_cast<std::uint32_t>(player_), entry.smoothing);
+            }
+        }
+        camera_.set_active(camera_config->active);
+        app_log::info("world_scene: camera config loaded, active=" + camera_.active_name());
+    } else {
+        app_log::warn("world_scene: camera config load failed, using built-in default");
+        camera::Params params;
+        params.distance = 18.0f;
+        params.target[0] = kPlayerSpawnX;
+        params.target[1] = 0.0f;
+        params.target[2] = kPlayerSpawnY;
+        camera_.create("world", params);
+        camera_.set_active("world");
+        camera_.set_follow_active(static_cast<std::uint32_t>(player_), 0.15f);
+    }
+    // 首帧直接对齐到玩家位置（实时跟随），避免渲染前相机停在世界原点。
     syncCameraToPlayer();
 
     return true;
@@ -173,7 +190,7 @@ void WorldScene::update(float fixedDt) {
     // 4. 更新遮挡判定 (高层溶解 + 同层墙透明)。
     culler_.update(*world_, visibility::View{pos.x, pos.y, mover.z});
 
-    // 5. 相机目标跟随玩家。
+    // 5. 相机实时跟随玩家（target 直写; 自由相机模式下跳过）。
     syncCameraToPlayer();
 }
 
@@ -298,9 +315,9 @@ void WorldScene::syncCameraToPlayer() {
     }
     const ecs::Position& pos = registry_.get<ecs::Position>(player_);
     // 地图 (x, y, z) → raylib (x, z, y); 高度经垂直缩放 (与 renderPlayer 一致)。
-    camera_.set_param_active("target_x", pos.x);
-    camera_.set_param_active("target_y", pos.z * world_->vertical_scale());
-    camera_.set_param_active("target_z", pos.y);
+    // 实时跟随: target 直写玩家位置 (无平滑, 用户 2026-10-03 确认)。
+    const float target[3] = {pos.x, pos.z * world_->vertical_scale(), pos.y};
+    camera_.follow_hard(camera_.active(), target);
     camera3d_ = camera::to_camera3d(*camera_.active_params());
 }
 
@@ -330,6 +347,7 @@ void WorldScene::renderUi() {
                     ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NoMouseCursorChange;
                     EnableCursor();
                 }
+                // 退出自由相机: 实时跟随直接回位。
                 syncCameraToPlayer();
             }
         }
@@ -343,6 +361,14 @@ void WorldScene::renderUi() {
                 bool changed = false;
                 const camera::Params* params = camera_.active_params();
                 if (params != nullptr) {
+                    ImGui::Text("类型: %s (%s)", camera::type_name(params->type),
+                                params->projection == 1 ? "正交" : "透视");
+                    const bool is_persp = params->type == camera::Type::Isometric;
+                    if (ImGui::SmallButton(is_persp ? "切换正交" : "切换透视")) {
+                        changed |=
+                            camera_.set_type_active(is_persp ? camera::Type::IsometricOrtho : camera::Type::Isometric);
+                    }
+
                     float distance = params->distance;
                     if (ImGui::DragFloat("距离", &distance, 0.1f)) {
                         changed |= camera_.set_param_active("distance", distance);
@@ -351,9 +377,9 @@ void WorldScene::renderUi() {
                     if (ImGui::SliderFloat("FOV", &fovy, 20.0f, 120.0f)) {
                         changed |= camera_.set_param_active("fov", fovy);
                     }
-                    if (changed) {
-                        syncCameraToPlayer();
-                    }
+                }
+                if (changed) {
+                    syncCameraToPlayer();
                 }
             }
         }

@@ -13,6 +13,7 @@ add_executable(project_phoenix
     config/config.cpp
     ecs/ecs.cpp
     camera/camera.cpp
+    camera/camera_config.cpp
     input/input.cpp
     world/world.cpp
     movement/movement.cpp
@@ -38,6 +39,7 @@ add_executable(project_phoenix_tests
     config/config.cpp
     ecs/ecs.cpp
     camera/camera.cpp
+    camera/camera_config.cpp
     input/input.cpp
     world/world.cpp
     movement/movement.cpp
@@ -48,6 +50,7 @@ add_executable(project_phoenix_tests
     tests/test_config.cpp
     tests/test_ecs.cpp
     tests/test_camera.cpp
+    tests/test_camera_config.cpp
     tests/test_api_camera.cpp
     tests/test_input.cpp
     tests/test_world.cpp

@@ -12,4 +12,17 @@ api.log.info("demo_camera: set fov=35")
 api.camera.set_param("distance", 18)
 api.log.info("demo_camera: set distance=18")
 
+-- P1-04: 类型切换与跟随绑定演示 (切换后切回, 不改变调试场景默认视角)。
+api.camera.set_type("isometric_ortho")
+api.log.info("demo_camera: set_type -> " .. api.camera.get_type())
+
+api.camera.set_type("isometric")
+api.log.info("demo_camera: set_type -> " .. api.camera.get_type())
+
+api.camera.set_follow(1, 0.2)
+api.log.info("demo_camera: set_follow(1, 0.2) -> true")
+
+api.camera.clear_follow()
+api.log.info("demo_camera: clear_follow -> true")
+
 api.log.info("demo_camera: done, active=" .. api.camera.get_active())

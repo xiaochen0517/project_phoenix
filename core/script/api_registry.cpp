@@ -155,9 +155,34 @@ void register_camera(lua_State* L, camera::Manager& manager) {
         return table;
     };
 
-    // 占位 (P0 不实现, P1 补齐): 固定返回 false, 保证调用不报错。
+    // set_follow(entity, smoothing): P1-04 实装 —— 活动相机跟随目标实体。
+    // entity 为 uint32 语义 number（对齐 api.ecs 实体 id，P1-05 落地后可从 api.ecs 获取;
+    // 0 是合法实体，清除跟随用 clear_follow）; smoothing > 0（指数平滑速率）。
+    cam["set_follow"] = [&manager](double entity, double smoothing) {
+        return manager.set_follow_active(static_cast<std::uint32_t>(entity), static_cast<float>(smoothing));
+    };
+
+    // clear_follow(): 清除活动相机跟随。
+    cam["clear_follow"] = [&manager]() { return manager.clear_follow_active(); };
+
+    // get_type(): 活动相机类型字符串; 无活动相机返回 nil。
+    cam["get_type"] = [&manager, L]() -> sol::object {
+        const camera::Params* params = manager.active_params();
+        if (params == nullptr) {
+            return sol::nil;
+        }
+        sol::state_view state(L);
+        return sol::make_object(state, std::string(camera::type_name(params->type)));
+    };
+
+    // set_type(type_string): 切换活动相机类型（"isometric" / "isometric_ortho"），返回是否成功。
+    cam["set_type"] = [&manager](const std::string& type_name) {
+        const std::optional<camera::Type> type = camera::type_from_name(type_name);
+        return type.has_value() && manager.set_type_active(*type);
+    };
+
+    // 占位（后续需求补齐）: 固定返回 false, 保证调用不报错。
     cam["shake"] = [](sol::variadic_args) { return false; };
-    cam["set_follow"] = [](sol::variadic_args) { return false; };
 }
 
 void register_input(lua_State* L, input::Manager& manager) {

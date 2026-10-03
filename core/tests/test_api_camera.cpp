@@ -28,8 +28,8 @@ TEST_CASE("api.camera.* drives the camera manager from Lua") {
     api::register_all(engine);
     api::register_camera(engine.raw_state(), manager);
 
-    manager.create("main", camera::Type::Isometric, isometric_params(15.0f));
-    manager.create("overview", camera::Type::Isometric, isometric_params(25.0f));
+    manager.create("main", isometric_params(15.0f));
+    manager.create("overview", isometric_params(25.0f));
     manager.set_active("main");
 
     REQUIRE(engine.do_file(lua_path("test_camera.lua")));
@@ -59,6 +59,41 @@ TEST_CASE("api.camera.* drives the camera manager from Lua") {
 
     // 占位函数返回 false 不报错。
     REQUIRE_FALSE(engine.call_function("shake_placeholder").as_bool());
+}
+
+TEST_CASE("api.camera follow and type bindings drive the manager") {
+    lua_engine::Engine engine;
+    camera::Manager manager;
+    api::register_all(engine);
+    api::register_camera(engine.raw_state(), manager);
+
+    manager.create("main", isometric_params(15.0f));
+    manager.set_active("main");
+
+    REQUIRE(engine.do_file(lua_path("test_camera.lua")));
+
+    // set_type 切换类型 + get_type 读回。
+    REQUIRE(engine.call_function("set_type_ortho").as_bool());
+    REQUIRE(manager.active_params()->type == camera::Type::IsometricOrtho);
+    REQUIRE(manager.active_params()->projection == 1);
+    REQUIRE(engine.call_function("get_type_str").as_string() == "isometric_ortho");
+
+    // 非法类型返回 false, 状态不变。
+    REQUIRE_FALSE(engine.call_function("set_type_invalid").as_bool());
+    REQUIRE(manager.active_params()->type == camera::Type::IsometricOrtho);
+
+    // set_follow 写跟随状态。
+    REQUIRE(engine.call_function("set_follow_player").as_bool());
+    REQUIRE(manager.follow(manager.active())->entity == 7);
+    REQUIRE(manager.follow(manager.active())->smoothing == 0.25f);
+
+    // smoothing <= 0 返回 false。
+    REQUIRE_FALSE(engine.call_function("set_follow_bad_smoothing").as_bool());
+    REQUIRE(manager.follow(manager.active())->entity == 7);
+
+    // clear_follow 清除。
+    REQUIRE(engine.call_function("clear_follow_player").as_bool());
+    REQUIRE_FALSE(manager.follow(manager.active())->enabled);
 }
 
 TEST_CASE("calling an unregistered api.camera fails gracefully") {

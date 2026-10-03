@@ -38,10 +38,10 @@ bool DemoScene::init() {
     camera::Params params;
     params.distance = static_cast<float>(defaultDistance);
     params.fovy = static_cast<float>(defaultFov);
-    cameraManager_.create("default", camera::Type::Isometric, params);
+    cameraManager_.create("default", params);
     params.distance = static_cast<float>(overviewDistance);
     params.fovy = static_cast<float>(overviewFov);
-    cameraManager_.create("overview", camera::Type::Isometric, params);
+    cameraManager_.create("overview", params);
     cameraManager_.set_active("default");
 
     // 3. 注册 api.* 绑定 (无状态 + event + camera)。

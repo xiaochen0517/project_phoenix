@@ -86,11 +86,11 @@ bool ModelViewerGame::init() {
     // 加载演示脚本由 Lua 配置/切换相机, 并把活动相机同步到渲染相机 (camera_)。
     camera::Params params;
     params.distance = 15.0f;
-    cameraManager_.create("default", camera::Type::Isometric, params);
+    cameraManager_.create("default", params);
     params.distance = 25.0f;
-    cameraManager_.create("overview", camera::Type::Isometric, params);
+    cameraManager_.create("overview", params);
     params.distance = 8.0f;
-    cameraManager_.create("near", camera::Type::Isometric, params);
+    cameraManager_.create("near", params);
     cameraManager_.set_active("default");
 
     api::register_all(lua_);
